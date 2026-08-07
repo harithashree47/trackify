@@ -4,13 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FiMail, FiLock } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { authApi } from '../api';
 import { Input } from '../components/Input.jsx';
 import { Button } from '../components/Button.jsx';
 import { AuthLayout } from '../components/AuthLayout.jsx';
 
 export const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { setUser } = useAuth();
   const { error } = useToast();
   const [formData, setFormData] = useState({
     email: '',
@@ -40,10 +41,13 @@ export const Login = () => {
     setIsLoading(true);
 
     try {
-      await login(formData.email, formData.password);
+      const result = await authApi.login(formData.email, formData.password);
+      localStorage.setItem('token', result.token);
+      localStorage.setItem('user', JSON.stringify(result.user));
+      setUser(result.user);
       navigate('/dashboard');
     } catch (err) {
-      error('Invalid email or password. Try test@example.com / password');
+      error(err.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }

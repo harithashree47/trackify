@@ -4,13 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FiUser, FiMail, FiLock } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { authApi } from '../api';
 import { Input } from '../components/Input.jsx';
 import { Button } from '../components/Button.jsx';
 import { AuthLayout } from '../components/AuthLayout.jsx';
 
 export const Register = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { setUser } = useAuth();
   const { error, success } = useToast();
   const [formData, setFormData] = useState({
     name: '',
@@ -30,11 +31,18 @@ export const Register = () => {
     setIsLoading(true);
 
     try {
-      await register(formData.name, formData.email, formData.password);
+      const result = await authApi.register(
+        formData.name,
+        formData.email,
+        formData.password
+      );
+      localStorage.setItem('token', result.token);
+      localStorage.setItem('user', JSON.stringify(result.user));
+      setUser(result.user);
       success('Account created successfully!');
       navigate('/dashboard');
     } catch (err) {
-      error('Failed to create account. Please try again.');
+      error(err.message || 'Failed to create account. Please try again.');
     } finally {
       setIsLoading(false);
     }

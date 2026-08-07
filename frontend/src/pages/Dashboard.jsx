@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { FiPlus, FiCheckCircle, FiClock } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useGoals } from '../context/GoalsContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { goalsApi } from '../api';
 import { Navbar } from '../components/Navbar.jsx';
 import { Button } from '../components/Button.jsx';
 import { PriorityBadge } from '../components/PriorityBadge.jsx';
@@ -26,8 +26,23 @@ const CheckIcon = ({ className = 'h-3.5 w-3.5' }) => (
 export const Dashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { goals, isLoading } = useGoals();
   const { info } = useToast();
+  const [goals, setGoals] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadGoals = async () => {
+      try {
+        const data = await goalsApi.getAll();
+        setGoals(data);
+      } catch (error) {
+        console.error('Error fetching goals:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadGoals();
+  }, []);
 
   const today = new Date();
   const todayString = today.toISOString().split('T')[0];

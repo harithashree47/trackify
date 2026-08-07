@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -10,8 +10,8 @@ import {
   FiArrowLeft,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useGoals } from '../context/GoalsContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { goalsApi } from '../api';
 import { Navbar } from '../components/Navbar.jsx';
 import { Button } from '../components/Button.jsx';
 import { Input } from '../components/Input.jsx';
@@ -44,8 +44,23 @@ const getDayNumber = (dateStr) => {
 export const Goals = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { goals, isLoading, addGoal, toggleGoal, deleteGoal } = useGoals();
   const { success, error } = useToast();
+  const [goals, setGoals] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadGoals = async () => {
+      try {
+        const data = await goalsApi.getAll();
+        setGoals(data);
+      } catch (err) {
+        console.error('Error fetching goals:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadGoals();
+  }, []);
 
   const todayString = toDateStr(new Date());
   const [selectedDate, setSelectedDate] = useState(todayString);
@@ -130,12 +145,13 @@ export const Goals = () => {
     }
     setIsSubmitting(true);
     try {
-      await addGoal(title, '');
+      const newGoal = await goalsApi.create(title.trim(), '');
+      setGoals((prev) => [newGoal, ...prev]);
       success('Goal added successfully!');
       handleCloseModals();
       setSelectedDate(todayString);
     } catch (err) {
-      error('Failed to add goal. Please try again.');
+      error(err.message || 'Failed to add goal. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -145,7 +161,8 @@ export const Goals = () => {
     if (!selectedGoal) return;
     setIsSubmitting(true);
     try {
-      await deleteGoal(selectedGoal.id);
+      await goalsApi.delete(selectedGoal.id);
+      setGoals((prev) => prev.filter((g) => g.id !== selectedGoal.id));
       success('Goal deleted successfully!');
       handleCloseModals();
     } catch (err) {
@@ -158,7 +175,8 @@ export const Goals = () => {
   const handleToggleGoal = async (id) => {
     try {
       const goal = dayGoals.find((g) => g.id === id);
-      await toggleGoal(id);
+      const updatedGoal = await goalsApi.toggleComplete(id);
+      setGoals((prev) => prev.map((g) => (g.id === id ? updatedGoal : g)));
       if (goal && !goal.completed) {
         success('Goal completed! 🎉');
       }

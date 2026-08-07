@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { authApi } from '../services/api';
+import { authApi } from '../api';
 
 const AuthContext = createContext(undefined);
 
@@ -54,6 +54,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        setUser,
         isAuthenticated: !!user,
         isLoading,
         login,
