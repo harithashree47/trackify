@@ -1,35 +1,34 @@
 import { cn } from '../utils/cn.js';
+import logoImg from '../assets/logo1.png';
 
 export const LogoMark = ({ className }) => (
   <span
     className={cn(
-      'relative flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-white/20',
+      'flex h-10 w-10 flex-none items-center justify-center overflow-hidden sm:h-16 sm:w-16',
       className
     )}
   >
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-      <circle
-        cx="12"
-        cy="12"
-        r="8.4"
-        stroke="rgba(255,255,255,.4)"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-      />
-      <path
-        d="M8.2 12.4l2.5 2.6 5-5.4"
-        stroke="#fff"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <img
+      src={logoImg}
+      alt="Trackify logo"
+      className="h-full w-full scale-[1.35] object-contain"
+    />
   </span>
 );
 
-export const Logo = ({ className }) => (
-  <div className={cn('flex items-center gap-2.5', className)}>
-    <LogoMark />
-    <span className="text-[16px] font-extrabold tracking-tight">Trackify</span>
+export const Logo = ({ className, onDark = false, markClassName, titleClassName }) => (
+  <div className={cn('flex items-center gap-0', className)}>
+    <LogoMark className={markClassName} />
+    <span
+      className={cn(
+        '-ml-1 text-[19px] font-extrabold tracking-tight sm:text-[26px]',
+        titleClassName,
+        onDark
+          ? 'text-white'
+          : 'bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent'
+      )}
+    >
+      Trackify
+    </span>
   </div>
 );

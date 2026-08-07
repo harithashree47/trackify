@@ -43,7 +43,7 @@ const getDayNumber = (dateStr) => {
 
 export const Goals = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { goals, isLoading, addGoal, toggleGoal, deleteGoal } = useGoals();
   const { success, error } = useToast();
 
@@ -205,10 +205,30 @@ export const Goals = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+    <div className="min-h-screen bg-white">
       <Navbar onLogout={handleLogout} />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        {/* Greeting */}
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="mb-4 text-[20px] font-medium tracking-tight text-slate-900 sm:text-[24px]"
+        >
+          Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'},{' '}
+          {user?.name?.split(' ')[0]}
+          <motion.span
+            className="inline-block"
+            initial={{ opacity: 0, scale: 0, rotate: -30 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ delay: 0.3, type: 'spring', stiffness: 260, damping: 12 }}
+            whileHover={{ rotate: [0, -15, 15, 0], transition: { duration: 0.6 } }}
+          >
+            {' '}👋
+          </motion.span>
+        </motion.h2>
+
         {/* Day Navigation Header with Back Arrow Integrated */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

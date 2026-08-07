@@ -11,7 +11,7 @@ export const Navbar = ({ onLogout }) => {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="sticky top-0 z-40 flex items-center gap-4 border-b border-slate-200/70 bg-white/75 px-6 py-3.5 backdrop-blur-xl sm:px-8"
+      className="sticky top-0 z-40 flex items-center gap-3 border-b border-slate-200/70 bg-white/75 px-4 py-3.5 backdrop-blur-xl sm:gap-4 sm:px-8"
     >
       <Logo />
 

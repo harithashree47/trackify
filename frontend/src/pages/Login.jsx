@@ -16,8 +16,24 @@ export const Login = () => {
     email: '',
     password: '',
   });
-  const [remember, setRemember] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.09, delayChildren: 0.05 },
+    },
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 18 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.45, ease: 'easeOut' },
+    },
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,20 +51,18 @@ export const Login = () => {
 
   return (
     <AuthLayout>
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <h2 className="text-[28px] font-extrabold tracking-tight">
-          Welcome back
-        </h2>
-        <p className="mt-2 text-[14.5px] text-slate-500">
-          Sign in to continue to your goals
-        </p>
+      <motion.div variants={container} initial="hidden" animate="show">
+        <motion.div variants={item}>
+          <h2 className="text-[28px] font-extrabold tracking-tight">
+            Welcome back
+          </h2>
+          <p className="mt-2 text-[14.5px] text-slate-500">
+            Sign in to continue to your goals
+          </p>
+        </motion.div>
 
         <form onSubmit={handleSubmit} className="mt-8">
-          <div className="mb-[18px]">
+          <motion.div variants={item} className="mb-[18px]">
             <Input
               type="email"
               label="Email"
@@ -60,9 +74,9 @@ export const Login = () => {
               leftIcon={<FiMail className="h-5 w-5" />}
               required
             />
-          </div>
+          </motion.div>
 
-          <div className="mb-2">
+          <motion.div variants={item} className="mb-2">
             <Input
               type="password"
               label="Password"
@@ -74,51 +88,25 @@ export const Login = () => {
               leftIcon={<FiLock className="h-5 w-5" />}
               required
             />
-          </div>
+          </motion.div>
 
-          <div className="mb-[22px] mt-4 flex items-center justify-between">
-            <label className="flex cursor-pointer select-none items-center gap-2.5 text-[13.5px] font-medium">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={() => setRemember((r) => !r)}
-                className="peer sr-only"
-              />
-              <span className="flex h-5 w-5 items-center justify-center rounded-[7px] border-[1.6px] border-slate-200 bg-white transition peer-checked:border-blue-600 peer-checked:bg-blue-600">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={3.5}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-3 w-3 text-white opacity-0 transition peer-checked:opacity-100"
-                >
-                  <path d="M5 13l4 4L19 7" />
-                </svg>
-              </span>
-              Remember me
-            </label>
-            <Link
-              to="/login"
-              className="text-[13.5px] font-semibold text-blue-600 hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
-
-          <Button type="submit" size="lg" className="w-full" isLoading={isLoading}>
-            Sign in
-          </Button>
+          <motion.div variants={item}>
+            <Button type="submit" size="lg" className="w-full" isLoading={isLoading}>
+              Sign in
+            </Button>
+          </motion.div>
         </form>
 
-        <div className="my-[26px] flex items-center gap-[14px] text-[12.5px] font-medium text-slate-400">
+        <motion.div
+          variants={item}
+          className="my-[26px] flex items-center gap-[14px] text-[12.5px] font-medium text-slate-400"
+        >
           <span className="h-px flex-1 bg-slate-200" />
           or continue with
           <span className="h-px flex-1 bg-slate-200" />
-        </div>
+        </motion.div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <motion.div variants={item} className="grid grid-cols-2 gap-3">
           <button
             type="button"
             className="flex items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-slate-200 bg-white px-3 py-3 text-[13.5px] font-semibold text-slate-800 transition hover:bg-slate-50 hover:shadow-sm"
@@ -140,9 +128,12 @@ export const Login = () => {
             </svg>
             Apple
           </button>
-        </div>
+        </motion.div>
 
-        <p className="mt-7 text-center text-sm text-slate-500">
+        <motion.p
+          variants={item}
+          className="mt-7 text-center text-sm text-slate-500"
+        >
           Don't have an account?{' '}
           <Link
             to="/register"
@@ -150,7 +141,7 @@ export const Login = () => {
           >
             Sign up
           </Link>
-        </p>
+        </motion.p>
       </motion.div>
     </AuthLayout>
   );

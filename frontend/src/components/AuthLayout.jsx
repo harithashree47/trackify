@@ -31,7 +31,7 @@ const FloatCard = ({ className, children }) => (
 
 export const AuthLayout = ({ children }) => {
   return (
-    <div className="grid min-h-screen lg:grid-cols-2">
+    <div className="grid min-h-dvh overflow-x-clip lg:grid-cols-2">
       {/* Visual panel */}
       <div className="relative hidden overflow-hidden bg-gradient-to-br from-blue-800 via-blue-600 to-purple-600 p-16 text-white lg:flex lg:flex-col lg:justify-center">
         {/* Blobs */}
@@ -39,9 +39,7 @@ export const AuthLayout = ({ children }) => {
         <span className="absolute -left-10 -bottom-16 h-[280px] w-[280px] rounded-full bg-purple-400/60 blur-[70px]" />
 
         {/* Brand */}
-        <div className="relative z-10 mb-14">
-          <Logo className="text-[17px] font-extrabold" />
-        </div>
+        <Logo onDark className="relative z-10 mb-14" />
 
         {/* Copy */}
         <div className="relative z-10">
@@ -101,11 +99,13 @@ export const AuthLayout = ({ children }) => {
       </div>
 
       {/* Form panel */}
-      <div className="flex items-center justify-center overflow-y-auto bg-slate-50 px-6 py-12 sm:px-10">
-        <div className="w-full max-w-[420px]">
-          <div className="mb-10 lg:hidden">
-            <Logo className="text-lg font-extrabold" />
-          </div>
+      <div className="flex min-h-dvh min-w-0 overflow-y-auto bg-white px-6 py-8 sm:px-10">
+        <div className="mx-auto w-full max-w-[420px]">
+          <Logo
+            className="mb-6 w-full pl-3 lg:hidden"
+            markClassName="h-20 w-20 sm:h-24 sm:w-24"
+            titleClassName="text-[32px] sm:text-[36px]"
+          />
           {children}
         </div>
       </div>

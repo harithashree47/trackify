@@ -87,19 +87,43 @@ export const Dashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-white">
       <Navbar onLogout={handleLogout} />
 
       <main className="mx-auto max-w-[1200px] px-6 py-5 sm:px-8">
         {/* Header */}
         <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-[30px] font-extrabold tracking-tight">
-              Good morning, {user?.name?.split(' ')[0]} 👋
-            </h1>
-            <p className="mt-1.5 text-sm font-medium text-slate-500">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+              className="text-[22px] font-medium tracking-tight sm:text-[30px]"
+            >
+              Good morning, {user?.name?.split(' ')[0]}
+              <motion.span
+                className="inline-block"
+                initial={{ opacity: 0, scale: 0, rotate: -30 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{
+                  delay: 0.3,
+                  type: 'spring',
+                  stiffness: 260,
+                  damping: 12,
+                }}
+                whileHover={{ rotate: [0, -15, 15, 0], transition: { duration: 0.6 } }}
+              >
+                {' '}👋
+              </motion.span>
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.15 }}
+              className="mt-1.5 text-sm font-medium text-slate-500"
+            >
               {formattedDate} · {stats.pending} goals to complete today
-            </p>
+            </motion.p>
           </div>
           <Button
             onClick={() => navigate('/goals')}
@@ -123,7 +147,7 @@ export const Dashboard = () => {
             </div>
             <div>
               <small className="block text-[12.5px] font-semibold text-slate-500">Today's Progress</small>
-              <b className="mt-0.5 block text-[24px] font-extrabold tracking-tight text-slate-900">{stats.percentage}%</b>
+              <b className="mt-0.5 block text-[24px] font-semibold tracking-tight text-slate-900">{stats.percentage}%</b>
               <span className="mt-0.5 inline-block text-[11.5px] font-bold text-green-600">↑ on track</span>
             </div>
           </StatCard>
@@ -134,7 +158,7 @@ export const Dashboard = () => {
             </StatIco>
             <div>
               <small className="block text-[12.5px] font-semibold text-slate-500">Completed Goals</small>
-              <b className="mt-0.5 block text-[24px] font-extrabold tracking-tight text-slate-900">{stats.completed}</b>
+              <b className="mt-0.5 block text-[24px] font-semibold tracking-tight text-slate-900">{stats.completed}</b>
               <span className="mt-0.5 inline-block text-[11.5px] font-bold text-green-600">↑ great job</span>
             </div>
           </StatCard>
@@ -145,7 +169,7 @@ export const Dashboard = () => {
             </StatIco>
             <div>
               <small className="block text-[12.5px] font-semibold text-slate-500">Pending Goals</small>
-              <b className="mt-0.5 block text-[24px] font-extrabold tracking-tight text-slate-900">{stats.pending}</b>
+              <b className="mt-0.5 block text-[24px] font-semibold tracking-tight text-slate-900">{stats.pending}</b>
               <span className="mt-0.5 inline-block text-[11.5px] font-bold text-slate-400">waiting on you</span>
             </div>
           </StatCard>
@@ -158,7 +182,7 @@ export const Dashboard = () => {
             </StatIco>
             <div>
               <small className="block text-[12.5px] font-semibold text-slate-500">Current Streak</small>
-              <b className="mt-0.5 block text-[24px] font-extrabold tracking-tight text-slate-900">{streak} day{streak === 1 ? '' : 's'}</b>
+              <b className="mt-0.5 block text-[24px] font-semibold tracking-tight text-slate-900">{streak} day{streak === 1 ? '' : 's'}</b>
               <span className="mt-0.5 inline-block text-[11.5px] font-bold text-slate-400">keep going!</span>
             </div>
           </StatCard>
@@ -203,22 +227,22 @@ export const Dashboard = () => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <b className="text-[38px] font-extrabold tracking-tight text-slate-900">{stats.percentage}%</b>
+                  <b className="text-[38px] font-semibold tracking-tight text-slate-900">{stats.percentage}%</b>
                   <span className="text-[13px] font-semibold text-slate-500">Complete</span>
                 </div>
               </div>
 
               <div className="mt-5 grid w-full grid-cols-3 gap-3">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-2 py-3 text-center">
-                  <b className="block text-[19px] font-extrabold text-blue-600">{stats.completed}</b>
+                  <b className="block text-[19px] font-semibold text-blue-600">{stats.completed}</b>
                   <small className="text-[11.5px] font-semibold text-slate-500">Completed</small>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-2 py-3 text-center">
-                  <b className="block text-[19px] font-extrabold text-amber-600">{stats.pending}</b>
+                  <b className="block text-[19px] font-semibold text-amber-600">{stats.pending}</b>
                   <small className="text-[11.5px] font-semibold text-slate-500">Pending</small>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-2 py-3 text-center">
-                  <b className="block text-[19px] font-extrabold text-green-600">{streak}</b>
+                  <b className="block text-[19px] font-semibold text-green-600">{streak}</b>
                   <small className="text-[11.5px] font-semibold text-slate-500">Day streak</small>
                 </div>
               </div>
