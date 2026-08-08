@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
-import { FiBell, FiLogOut, FiSearch } from 'react-icons/fi';
+import { FiLogOut, FiSearch, FiSettings } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Logo } from './Logo.jsx';
 
 export const Navbar = ({ onLogout }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <motion.nav
@@ -25,14 +27,6 @@ export const Navbar = ({ onLogout }) => {
       </div>
 
       <div className="ml-auto flex items-center gap-2.5">
-        <button
-          className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-800"
-          title="Notifications"
-        >
-          <FiBell className="h-[18px] w-[18px]" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full border-2 border-slate-100 bg-red-500" />
-        </button>
-
         <div className="flex items-center gap-2.5">
           <div className="hidden text-right leading-tight sm:block">
             <b className="block text-[13px] text-slate-900">{user?.name}</b>
@@ -42,6 +36,14 @@ export const Navbar = ({ onLogout }) => {
             {user?.name?.charAt(0).toUpperCase() || 'U'}
           </div>
         </div>
+
+        <button
+          onClick={() => navigate('/settings')}
+          title="Settings"
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-800"
+        >
+          <FiSettings className="h-[18px] w-[18px]" />
+        </button>
 
         <button
           onClick={onLogout}
