@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiDownload, FiX } from 'react-icons/fi';
 import { Button } from '../components/Button.jsx';
-import { Logo } from '../components/Logo.jsx';
+import logoImg from '../assets/logo1.png';
 import { useToast } from '../context/ToastContext.jsx';
 
 const isStandalone = () =>
@@ -106,13 +106,20 @@ const InstallPrompt = () => {
               <FiX className="h-5 w-5" />
             </button>
 
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-600/30">
-              <Logo markClassName="h-11 w-11" onDark />
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-600/30">
+              <img
+                src={logoImg}
+                alt="Trackify logo"
+                className="h-full w-full scale-[1.3] object-contain"
+              />
             </div>
 
-            <h2 className="mb-5 text-lg font-bold tracking-tight text-gray-900">
-              Install the app
+            <h2 className="text-xl font-extrabold tracking-tight text-gray-900">
+              Trackify
             </h2>
+            <p className="mt-1 mb-5 text-sm font-medium text-slate-500">
+              Install the app
+            </p>
 
             <div className="flex gap-3">
               <Button variant="secondary" className="flex-1" onClick={dismissForever}>
