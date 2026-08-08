@@ -114,7 +114,12 @@ export const Dashboard = () => {
               transition={{ duration: 0.6, ease: 'easeOut' }}
               className="text-[22px] font-medium tracking-tight sm:text-[30px]"
             >
-              Good morning, {user?.name?.split(' ')[0]}
+              {new Date().getHours() < 12
+                ? 'Good morning'
+                : new Date().getHours() < 18
+                  ? 'Good afternoon'
+                  : 'Good evening'},{' '}
+              {user?.name?.split(' ')[0]}
               <motion.span
                 className="inline-block"
                 initial={{ opacity: 0, scale: 0, rotate: -30 }}
