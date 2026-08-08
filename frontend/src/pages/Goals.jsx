@@ -21,6 +21,24 @@ import { FaCrown } from 'react-icons/fa';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const QUOTES = [
+  'Small steps every day lead to big results.',
+  'Discipline is choosing what you want most over what you want now.',
+  'A goal without a plan is just a wish.',
+  'Don\'t watch the clock; do what it does. Keep going.',
+  'The secret of getting ahead is getting started.',
+  'You don\'t have to be great to start, but you have to start to be great.',
+  'Success is the sum of small efforts, repeated day in and day out.',
+  'Every accomplishment starts with the decision to try.',
+  'Focus on progress, not perfection.',
+  'The best time to plant a tree was 20 years ago. The second best time is now.',
+  'Stay consistent, and your future self will thank you.',
+  'Motivation gets you going, but habit keeps you growing.',
+  'Do something today that your future self will thank you for.',
+  'Great things are done by a series of small things brought together.',
+  'Your only limit is your mind.',
+];
+
 const toDateStr = (date) => {
   const d = new Date(date);
   const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
@@ -34,11 +52,11 @@ const shiftDay = (dateStr, offset) => {
   return toDateStr(date);
 };
 
-const getDayNumber = (dateStr) => {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const startOfYear = new Date(y, 0, 0);
-  const diff = new Date(y, m - 1, d) - startOfYear;
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
+const getDayNumber = (dateStr, startDateStr) => {
+  if (!startDateStr) return 1;
+  const diff =
+    new Date(dateStr + 'T12:00:00') - new Date(startDateStr + 'T12:00:00');
+  return Math.max(Math.floor(diff / DAY_MS) + 1, 1);
 };
 
 export const Goals = () => {
@@ -47,6 +65,10 @@ export const Goals = () => {
   const { success, error } = useToast();
   const [goals, setGoals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const quote = useMemo(
+    () => QUOTES[Math.floor(Math.random() * QUOTES.length)],
+    []
+  );
 
   useEffect(() => {
     const loadGoals = async () => {
@@ -118,7 +140,12 @@ export const Goals = () => {
       year: 'numeric',
     });
 
-  const dayNumber = getDayNumber(selectedDate);
+  const startDate = useMemo(() => {
+    if (goals.length === 0) return null;
+    return goals.map((g) => toDateStr(g.createdAt)).sort()[0];
+  }, [goals]);
+
+  const dayNumber = getDayNumber(selectedDate, startDate);
 
   const handleOpenAddModal = () => {
     setTitle('');
@@ -227,25 +254,28 @@ export const Goals = () => {
       <Navbar onLogout={handleLogout} />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        {/* Greeting */}
-        <motion.h2
+        {/* Daily Quote Announcement Bar */}
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut' }}
-          className="mb-4 text-[20px] font-medium tracking-tight text-slate-900 sm:text-[24px]"
+          className="mb-4 flex items-center gap-2 rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-yellow-50 to-amber-50 px-3 py-2.5 shadow-sm"
         >
-          Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'},{' '}
-          {user?.name?.split(' ')[0]}
-          <motion.span
-            className="inline-block"
-            initial={{ opacity: 0, scale: 0, rotate: -30 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ delay: 0.3, type: 'spring', stiffness: 260, damping: 12 }}
-            whileHover={{ rotate: [0, -15, 15, 0], transition: { duration: 0.6 } }}
-          >
-            {' '}👋
-          </motion.span>
-        </motion.h2>
+          <span className="shrink-0 text-base">💡</span>
+          <div className="relative flex-1 overflow-hidden">
+            <div className="animate-marquee flex w-max items-center">
+              <p className="whitespace-nowrap px-4 text-[14px] font-semibold tracking-tight text-amber-800 sm:text-[15px]">
+                {quote}
+              </p>
+              <p
+                aria-hidden="true"
+                className="whitespace-nowrap px-4 text-[14px] font-semibold tracking-tight text-amber-800 sm:text-[15px]"
+              >
+                {quote}
+              </p>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Day Navigation Header with Back Arrow Integrated */}
         <motion.div
@@ -274,7 +304,7 @@ export const Goals = () => {
               </button>
 
               <div className="text-center flex-1 min-w-0">
-                {/* Day Number with Crown Icon on Top - Reduced Size */}
+                {/* Crown Above Day Count */}
                 <motion.div 
                   className="flex flex-col items-center justify-center mb-0.5"
                   initial={{ scale: 0.3, opacity: 0, y: 20 }}
@@ -293,7 +323,7 @@ export const Goals = () => {
                   >
                     <FaCrown className="h-6 w-6 text-amber-400 drop-shadow-lg" />
                   </motion.div>
-                  
+
                   <motion.span
                     variants={numberVariants}
                     animate="animate"
@@ -301,6 +331,10 @@ export const Goals = () => {
                   >
                     {dayNumber}
                   </motion.span>
+
+                  <span className="text-[11px] font-bold tracking-wide text-amber-500/80 mt-0.5">
+                    Day {dayNumber}
+                  </span>
                 </motion.div>
                 
                 <h1 className="text-xl font-extrabold text-slate-900 tracking-tight mt-1">
