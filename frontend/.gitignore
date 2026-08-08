@@ -44,6 +44,7 @@ coverage/
 dev-dist/
 workbox-*.js
 sw.js
+!public/sw.js
 sw.js.map
 
 # Temporary files
