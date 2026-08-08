@@ -7,7 +7,6 @@ import { useToast } from '../context/ToastContext.jsx';
 import { goalsApi } from '../api';
 import { Navbar } from '../components/Navbar.jsx';
 import { Button } from '../components/Button.jsx';
-import { PriorityBadge } from '../components/PriorityBadge.jsx';
 
 const CheckIcon = ({ className = 'h-3.5 w-3.5' }) => (
   <svg
@@ -306,11 +305,7 @@ export const Dashboard = () => {
                       <b className={`block text-[14.5px] font-semibold ${goal.completed ? 'text-green-700 line-through opacity-85' : 'text-slate-900'}`}>
                         {goal.title}
                       </b>
-                      <small className="text-[12.5px] text-slate-500">
-                        {goal.description || 'No description'}
-                      </small>
                     </div>
-                    <PriorityBadge priority={goal.priority} />
                   </div>
                 ))}
               </div>
