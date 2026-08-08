@@ -106,7 +106,7 @@ const InstallPrompt = () => {
               <FiX className="h-5 w-5" />
             </button>
 
-            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg shadow-blue-600/30">
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white">
               <img
                 src={logoImg}
                 alt="Trackify logo"

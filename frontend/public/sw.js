@@ -13,7 +13,7 @@
  *    in Cache Storage.
  */
 
-const CACHE_VERSION = 'trackify-v1.0.0';
+const CACHE_VERSION = 'trackify-v1.0.1';
 
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
@@ -87,8 +87,8 @@ self.addEventListener('push', (event) => {
     body:
       data.body ||
       "Don't forget to finish your goals today!",
-    icon: data.icon || './icons/icon-192.png',
-    badge: data.badge || './icons/icon-192.png',
+    icon: data.icon || toUrl('./icons/icon-192.png'),
+    badge: data.badge || toUrl('./icons/icon-192.png'),
     data: { url: data.url || './goals' },
     vibrate: [100, 50, 100],
     tag: data.tag || 'trackify-goal-reminder',

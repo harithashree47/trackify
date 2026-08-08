@@ -8,6 +8,7 @@ import {
   FiTrash2,
   FiCheck,
   FiArrowLeft,
+  FiEdit2,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
@@ -87,6 +88,7 @@ export const Goals = () => {
   const todayString = toDateStr(new Date());
   const [selectedDate, setSelectedDate] = useState(todayString);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [title, setTitle] = useState('');
@@ -152,6 +154,12 @@ export const Goals = () => {
     setIsAddModalOpen(true);
   };
 
+  const handleOpenEditModal = (goal) => {
+    setSelectedGoal(goal);
+    setTitle(goal.title);
+    setIsEditModalOpen(true);
+  };
+
   const handleOpenDeleteModal = (goal) => {
     setSelectedGoal(goal);
     setIsDeleteModalOpen(true);
@@ -159,6 +167,7 @@ export const Goals = () => {
 
   const handleCloseModals = () => {
     setIsAddModalOpen(false);
+    setIsEditModalOpen(false);
     setIsDeleteModalOpen(false);
     setSelectedGoal(null);
     setTitle('');
@@ -179,6 +188,32 @@ export const Goals = () => {
       setSelectedDate(todayString);
     } catch (err) {
       error(err.message || 'Failed to add goal. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateGoal = async (e) => {
+    e.preventDefault();
+    if (!selectedGoal) return;
+    if (!title.trim()) {
+      error('Please enter a goal title');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const updatedGoal = await goalsApi.update(
+        selectedGoal.id,
+        title.trim(),
+        ''
+      );
+      setGoals((prev) =>
+        prev.map((g) => (g.id === selectedGoal.id ? updatedGoal : g))
+      );
+      success('Goal updated successfully!');
+      handleCloseModals();
+    } catch (err) {
+      error('Failed to update goal. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -514,7 +549,14 @@ export const Goals = () => {
                     </motion.span>
                   )}
 
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300">
+                    <button
+                      onClick={() => handleOpenEditModal(goal)}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                      title="Edit"
+                    >
+                      <FiEdit2 className="h-4 w-4" />
+                    </button>
                     <button
                       onClick={() => handleOpenDeleteModal(goal)}
                       className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
@@ -570,6 +612,33 @@ export const Goals = () => {
             </Button>
             <Button type="submit" isLoading={isSubmitting}>
               Save Goal
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit Goal Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseModals}
+        title="Edit Goal"
+        size="md"
+      >
+        <form onSubmit={handleUpdateGoal} className="space-y-4">
+          <Input
+            label="Goal Title"
+            placeholder="e.g., Exercise, Read, Study..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+            autoFocus
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="secondary" onClick={handleCloseModals}>
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={isSubmitting}>
+              Save Changes
             </Button>
           </div>
         </form>
