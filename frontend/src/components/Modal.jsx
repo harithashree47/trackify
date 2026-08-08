@@ -57,7 +57,7 @@ export const Modal = ({
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={cn(
               'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-              'bg-white rounded-2xl shadow-2xl z-50 w-full mx-4',
+              'bg-white rounded-2xl shadow-2xl z-50 w-[calc(100%-2rem)] max-h-[calc(100vh-2rem)] overflow-y-auto',
               sizes[size]
             )}
           >
