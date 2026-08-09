@@ -5,7 +5,24 @@ import { PushService } from '../push/push.service';
 import { toLocalDateStr } from '../common/utils/timezone.util';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
-const MAX_GOALS_IN_MESSAGE = 3;
+
+const REMINDER_MESSAGES = [
+  `Yo {username}! 😎 Still got one — {goal}`,
+  `Psst {username}! 👀 Don’t forget this — {goal}`,
+  `Ayy {username}! 🔥 Let’s get this done — {goal}`,
+  `Oii {username}! 😄 One more to finish — {goal}`,
+  `{username} 👋 This one’s still waiting — {goal}`,
+  `{username}, come on! 😤 Just one more — {goal}`,
+  `Heyy {username}! 👀 Wanna finish this? — {goal}`,
+  `Yo yo {username}! 😂 This one needs you — {goal}`,
+  `{username} 😎 One more, let’s go! — {goal}`,
+  `Psst! {username} 🤫 Your goal is waiting — {goal}`,
+  `Ayy {username}! 🚀 Time to tick this off — {goal}`,
+  `{username} 🔥 Let’s knock this one out — {goal}`,
+  `Oii {username}! 👀 Still got this one — {goal}`,
+  `{username} ✨ Your next little win — {goal}`,
+  `Come on {username}! 💪 One more — {goal}`,
+];
 
 interface DueGoal {
   id: number;
@@ -48,10 +65,12 @@ export class RemindersService implements OnModuleInit {
   }
 
   /**
-   * Runs every minute and sends a single grouped reminder (Web Push
-   * notification) to each user who has at least one unfinished goal created
-   * today (in the user's own timezone) and has not been reminded in the last
-   * hour. As soon as every today goal is completed, reminders stop.
+   * Runs every minute and sends at most one reminder (Web Push notification)
+   * per user per hour. The reminder mentions exactly one pending goal and
+   * rotates through the user's pending goals so each one gets a turn. Goals
+   * are only considered if created today (in the user's own timezone) and not
+   * already reminded within the last hour. As soon as every today goal is
+   * completed, reminders stop.
    */
   @Cron(CronExpression.EVERY_MINUTE, { name: 'goal-reminders' })
   async handleGoalReminders() {
@@ -108,7 +127,7 @@ export class RemindersService implements OnModuleInit {
     }
 
     for (const [userId, userGoals] of goalsByUser) {
-      // One reminder per user per hour, regardless of how many goals are due.
+      // Maximum one pending-goal notification per user per hour.
       const latestReminder = userGoals.reduce<number>(
         (latest, g) =>
           g.reminderSentAt
@@ -120,37 +139,45 @@ export class RemindersService implements OnModuleInit {
         continue;
       }
 
+      // Rotate through the pending goals: pick the one that has not been
+      // reminded for the longest (never-reminded goals first, then earliest
+      // created) so every pending goal gets its own hourly notification.
+      const selected = [...userGoals].sort((a, b) => {
+        const aTime = a.reminderSentAt ? a.reminderSentAt.getTime() : 0;
+        const bTime = b.reminderSentAt ? b.reminderSentAt.getTime() : 0;
+        if (aTime !== bTime) return aTime - bTime;
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      })[0];
+
       const firstName =
-        userGoals[0].user.name?.trim().split(/\s+/)[0] || 'there';
+        selected.user.name?.trim().split(/\s+/)[0] || 'there';
 
-      const names = userGoals.map((g) => `'${g.title}'`);
-      const shown = names.slice(0, MAX_GOALS_IN_MESSAGE);
-      const extra = names.length - shown.length;
+      const template =
+        REMINDER_MESSAGES[
+          Math.floor(Math.random() * REMINDER_MESSAGES.length)
+        ];
 
-      const body =
-        names.length === 1
-          ? `🔔 Hey ${firstName}! You haven't completed ${shown[0]} yet. Don't forget to finish today's goal! 💪`
-          : `🔔 Hey ${firstName}! You still have unfinished goals: ${shown.join(
-              ', ',
-            )}${extra > 0 ? ` +${extra} more` : ''}. Don't forget to finish today's goals! 💪`;
+      const body = template
+        .replaceAll('{username}', firstName)
+        .replaceAll('{goal}', selected.title);
 
       await this.pushService.sendNotification(userId, {
         title: `Today's Goal Reminder`,
         body,
         url: '/goals',
-        tag: 'goal-reminder',
+        tag: `goal-reminder-${selected.id}`,
       });
 
-      // Record the reminder time on every due goal so this user is only
-      // reminded again after a full hour.
+      // Record the reminder time only on the selected goal so the next hour's
+      // notification rotates to a different pending goal.
       await this.prisma.goal
         .updateMany({
-          where: { id: { in: userGoals.map((g) => g.id) } },
+          where: { id: selected.id },
           data: { reminderSent: true, reminderSentAt: new Date() },
         })
         .catch((err: any) => {
           this.logger.error(
-            `Failed to mark ${userGoals.length} goal(s) as reminded: ${err?.message || err}`,
+            `Failed to mark goal #${selected.id} as reminded: ${err?.message || err}`,
           );
         });
     }
