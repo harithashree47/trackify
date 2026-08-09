@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FiPlus,
   FiChevronLeft,
@@ -13,14 +13,14 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { goalsApi } from '../api';
+import { useGoals } from '../hooks/useGoals.js';
+import { toDateStr, shiftDay, todayStr, getDayNumber, DAY_MS } from '../utils/date.js';
 import { Navbar } from '../components/Navbar.jsx';
 import { Button } from '../components/Button.jsx';
 import { Input } from '../components/Input.jsx';
 import { Modal } from '../components/Modal.jsx';
 import { StreakIndicator } from '../components/StreakIndicator.jsx';
 import { FaCrown } from 'react-icons/fa';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 const QUOTES = [
   'Small steps every day lead to big results.',
@@ -40,53 +40,25 @@ const QUOTES = [
   'Your only limit is your mind.',
 ];
 
-const toDateStr = (date) => {
-  const d = new Date(date);
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().split('T')[0];
-};
-
-const shiftDay = (dateStr, offset) => {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  date.setDate(date.getDate() + offset);
-  return toDateStr(date);
-};
-
-const getDayNumber = (dateStr, startDateStr) => {
-  if (!startDateStr) return 1;
-  const diff =
-    new Date(dateStr + 'T12:00:00') - new Date(startDateStr + 'T12:00:00');
-  return Math.max(Math.floor(diff / DAY_MS) + 1, 1);
-};
-
 export const Goals = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, logout } = useAuth();
   const { success, error } = useToast();
-  const [goals, setGoals] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { goals, setGoals, isLoading } = useGoals();
   const quote = useMemo(
     () => QUOTES[Math.floor(Math.random() * QUOTES.length)],
     []
   );
 
-  useEffect(() => {
-    const loadGoals = async () => {
-      try {
-        const data = await goalsApi.getAll();
-        setGoals(data);
-      } catch (err) {
-        console.error('Error fetching goals:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadGoals();
-  }, []);
-
-  const todayString = toDateStr(new Date());
-  const [selectedDate, setSelectedDate] = useState(todayString);
+  const todayString = todayStr();
+  const urlDate = searchParams.get('date');
+  const [selectedDate, setSelectedDate] = useState(() => {
+    if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate)) {
+      return urlDate > todayString ? todayString : urlDate;
+    }
+    return todayString;
+  });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -108,6 +80,7 @@ export const Goals = () => {
   const allComplete = totalCount > 0 && completedCount === totalCount;
   const isToday = selectedDate === todayString;
   const isFuture = selectedDate > todayString;
+  const isPastDay = selectedDate < todayString;
 
   const calculateStreak = useMemo(() => {
     let streak = 0;
@@ -146,6 +119,12 @@ export const Goals = () => {
     if (goals.length === 0) return null;
     return goals.map((g) => toDateStr(g.createdAt)).sort()[0];
   }, [goals]);
+
+  useEffect(() => {
+    if (startDate && selectedDate < startDate) {
+      setSelectedDate(startDate);
+    }
+  }, [startDate, selectedDate]);
 
   const dayNumber = getDayNumber(selectedDate, startDate);
 
@@ -235,6 +214,7 @@ export const Goals = () => {
   };
 
   const handleToggleGoal = async (id) => {
+    if (isPastDay) return;
     try {
       const goal = dayGoals.find((g) => g.id === id);
       const updatedGoal = await goalsApi.toggleComplete(id);
@@ -319,71 +299,77 @@ export const Goals = () => {
           className="mb-4"
         >
           <div className="flex items-center gap-2">
-            <motion.button
-              onClick={() => navigate('/dashboard')}
-              whileHover={{ scale: 1.05, x: -2 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md hover:shadow-lg transition-all duration-300"
-              title="Back to Dashboard"
-            >
-              <FiArrowLeft className="h-4 w-4" />
-            </motion.button>
+            {/* Left cluster: back + previous day */}
+            <div className="flex min-w-0 flex-1 items-center justify-start gap-2">
+              <motion.button
+                onClick={() => navigate('/dashboard')}
+                whileHover={{ scale: 1.05, x: -2 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md hover:shadow-lg transition-all duration-300"
+                title="Back to Dashboard"
+              >
+                <FiArrowLeft className="h-4 w-4" />
+              </motion.button>
 
-            <div className="flex items-center justify-between gap-2 flex-1">
               <button
                 onClick={() => setSelectedDate(shiftDay(selectedDate, -1))}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm border border-slate-200 transition hover:text-blue-600 hover:border-blue-200 hover:shadow-md"
-                title="Previous day"
+                disabled={!startDate || selectedDate === startDate}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm border border-slate-200 transition enabled:hover:text-blue-600 enabled:hover:border-blue-200 enabled:hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                title={!startDate || selectedDate === startDate ? 'This is your first day' : 'Previous day'}
               >
                 <FiChevronLeft className="h-4 w-4" />
               </button>
+            </div>
 
-              <div className="text-center flex-1 min-w-0">
-                {/* Crown Above Day Count */}
-                <motion.div 
-                  className="flex flex-col items-center justify-center mb-0.5"
-                  initial={{ scale: 0.3, opacity: 0, y: 20 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  transition={{ 
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 20,
-                    delay: 0.1
-                  }}
+            {/* Centered crown + day title */}
+            <div className="min-w-0 text-center">
+              {/* Crown Above Day Count */}
+              <motion.div 
+                className="flex flex-col items-center justify-center mb-0.5"
+                initial={{ scale: 0.3, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                transition={{ 
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 20,
+                  delay: 0.1
+                }}
+              >
+                <motion.div
+                  variants={crownVariants}
+                  animate="animate"
+                  className="mb-0.5"
                 >
-                  <motion.div
-                    variants={crownVariants}
-                    animate="animate"
-                    className="mb-0.5"
-                  >
-                    <FaCrown className="h-6 w-6 text-amber-400 drop-shadow-lg" />
-                  </motion.div>
-
-                  <motion.span
-                    variants={numberVariants}
-                    animate="animate"
-                    className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 tracking-tight leading-none"
-                  >
-                    {dayNumber}
-                  </motion.span>
-
-                  <span className="text-[11px] font-bold tracking-wide text-amber-500/80 mt-0.5">
-                    Day {dayNumber}
-                  </span>
+                  <FaCrown className="h-6 w-6 text-amber-400 drop-shadow-lg" />
                 </motion.div>
-                
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight mt-1">
-                  {dayLabel()}
-                </h1>
-                <p className="text-[11px] font-medium text-slate-500">
-                  {dateSubLabel()}
-                </p>
-              </div>
 
+                <motion.span
+                  variants={numberVariants}
+                  animate="animate"
+                  className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400 tracking-tight leading-none"
+                >
+                  {dayNumber}
+                </motion.span>
+
+                <span className="text-[11px] font-bold tracking-wide text-amber-500/80 mt-0.5">
+                  Day {dayNumber}
+                </span>
+              </motion.div>
+              
+              <h1 className="text-xl font-extrabold text-slate-900 tracking-tight mt-1">
+                {dayLabel()}
+              </h1>
+              <p className="text-[11px] font-medium text-slate-500">
+                {dateSubLabel()}
+              </p>
+            </div>
+
+            {/* Right cluster: next day */}
+            <div className="flex min-w-0 flex-1 items-center justify-end">
               <button
                 onClick={() => setSelectedDate(shiftDay(selectedDate, 1))}
                 disabled={isFuture || isToday}
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm border border-slate-200 transition enabled:hover:text-blue-600 enabled:hover:border-blue-200 enabled:hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white text-slate-600 shadow-sm border border-slate-200 transition enabled:hover:text-blue-600 enabled:hover:border-blue-200 enabled:hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Next day"
               >
                 <FiChevronRight className="h-4 w-4" />
@@ -401,10 +387,19 @@ export const Goals = () => {
         >
           <button
             onClick={handleOpenAddModal}
-            className="w-full flex items-center justify-center gap-2 rounded-[20px] bg-gradient-to-br from-blue-600 to-indigo-600 text-white py-3 px-4 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+            disabled={isPastDay || isFuture}
+            className={`w-full flex items-center justify-center gap-2 rounded-[20px] text-white py-3 px-4 font-semibold shadow-lg transition-all duration-300 ${
+              isPastDay || isFuture
+                ? 'bg-slate-300 cursor-not-allowed shadow-none'
+                : 'bg-gradient-to-br from-blue-600 to-indigo-600 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]'
+            }`}
           >
             <FiPlus className="h-5 w-5" />
-            Add Goal for {dayLabel()}
+            {isPastDay
+              ? 'This day is locked'
+              : isFuture
+                ? 'Add Goal for Tomorrow'
+                : `Add Goal for ${dayLabel()}`}
           </button>
         </motion.div>
 
@@ -498,15 +493,16 @@ export const Goals = () => {
                   }`}
                 >
                   <motion.button
-                    whileHover={{ scale: 1.12 }}
-                    whileTap={{ scale: 0.9 }}
+                    whileHover={isPastDay ? undefined : { scale: 1.12 }}
+                    whileTap={isPastDay ? undefined : { scale: 0.9 }}
                     onClick={() => handleToggleGoal(goal.id)}
-                    className={`flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 ${
+                    disabled={isPastDay}
+                    className={`flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 disabled:cursor-not-allowed ${
                       goal.completed
                         ? 'bg-gradient-to-br from-blue-500 to-indigo-600 border-blue-500'
                         : 'border-slate-300 group-hover:border-blue-400'
-                    }`}
-                    title={goal.completed ? 'Mark incomplete' : 'Mark complete'}
+                    } ${isPastDay ? 'opacity-80' : ''}`}
+                    title={isPastDay ? 'Day locked' : goal.completed ? 'Mark incomplete' : 'Mark complete'}
                   >
                     {goal.completed && (
                       <motion.svg
@@ -528,11 +524,11 @@ export const Goals = () => {
 
                   <div className="min-w-0 flex-1">
                     <h3
-                      className={`text-sm font-semibold cursor-pointer transition-all duration-300 ${
+                      className={`text-sm font-semibold transition-all duration-300 ${
                         goal.completed
                           ? 'line-through text-slate-400'
                           : 'text-slate-900'
-                      }`}
+                      } ${isPastDay ? 'cursor-default' : 'cursor-pointer'}`}
                       onClick={() => handleToggleGoal(goal.id)}
                     >
                       {goal.title}
@@ -552,15 +548,17 @@ export const Goals = () => {
                   <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300">
                     <button
                       onClick={() => handleOpenEditModal(goal)}
-                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
-                      title="Edit"
+                      disabled={isPastDay}
+                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                      title={isPastDay ? 'Day locked' : 'Edit'}
                     >
                       <FiEdit2 className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleOpenDeleteModal(goal)}
-                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                      title="Delete"
+                      disabled={isPastDay}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-slate-400"
+                      title={isPastDay ? 'Day locked' : 'Delete'}
                     >
                       <FiTrash2 className="h-4 w-4" />
                     </button>

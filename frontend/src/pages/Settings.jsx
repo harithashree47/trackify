@@ -1,26 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiClock, FiBell } from 'react-icons/fi';
+import { FiArrowLeft, FiBell, FiRefreshCw } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { settingsApi } from '../api';
 import { Navbar } from '../components/Navbar.jsx';
 import { Button } from '../components/Button.jsx';
-import { Input } from '../components/Input.jsx';
 import {
   enablePushNotifications,
   disablePushNotifications,
   getPushState,
 } from '../pwa/pushNotifications.js';
-
-const DEFAULT_SETTINGS = {
-  workStart: '09:00',
-  workEnd: '18:00',
-  freeStart: '18:00',
-  freeEnd: '22:00',
-  timezone: 'UTC',
-};
 
 const getLocalTimezone = () => {
   try {
@@ -36,68 +27,49 @@ export const Settings = () => {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { success, error } = useToast();
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [pushState, setPushState] = useState({
     supported: false,
     subscribed: false,
     permission: 'default',
   });
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [isTogglingPush, setIsTogglingPush] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const data = await settingsApi.get();
-        setSettings({
-          ...DEFAULT_SETTINGS,
-          ...data,
-          timezone: data.timezone || getLocalTimezone(),
-        });
-      } catch (err) {
-        console.error('Error fetching settings:', err);
-      } finally {
-        setIsLoading(false);
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const data = await settingsApi.get();
+      const localTimezone = getLocalTimezone();
+      if (data.timezone && data.timezone !== localTimezone) {
+        settingsApi.update({ timezone: localTimezone }).catch(() => {});
       }
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+      setLoadError(err.message || 'Could not load your settings.');
+    } finally {
+      setIsLoading(false);
+    }
 
-      try {
-        setPushState(await getPushState());
-      } catch (err) {
-        console.error('Error reading push state:', err);
-      }
-    };
-    load();
+    try {
+      setPushState(await getPushState());
+    } catch (err) {
+      console.error('Error reading push state:', err);
+    }
   }, []);
 
-  const handleFieldChange = (field, value) => {
-    setSettings((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
-    try {
-      await settingsApi.update({
-        workStart: settings.workStart,
-        workEnd: settings.workEnd,
-        freeStart: settings.freeStart,
-        freeEnd: settings.freeEnd,
-        timezone: getLocalTimezone(),
-      });
-      setSettings((prev) => ({ ...prev, timezone: getLocalTimezone() }));
-      success('Reminder settings saved!');
-    } catch (err) {
-      error(err.message || 'Failed to save settings. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const handleEnablePush = async () => {
     setIsTogglingPush(true);
     try {
       await enablePushNotifications();
+      await settingsApi
+        .update({ timezone: getLocalTimezone() })
+        .catch(() => {});
       setPushState((prev) => ({ ...prev, subscribed: true, permission: 'granted' }));
       success('Notifications enabled! You will get a reminder for unfinished goals.');
     } catch (err) {
@@ -125,23 +97,6 @@ export const Settings = () => {
     navigate('/login');
   };
 
-  const previewReminder = () => {
-    const [h, m] = settings.freeStart.split(':').map(Number);
-    const [eh, em] = settings.freeEnd.split(':').map(Number);
-    const freeStart = h * 60 + m;
-    const freeEnd = eh * 60 + em;
-    if (!Number.isFinite(freeStart) || !Number.isFinite(freeEnd) || freeEnd <= freeStart) {
-      return '—';
-    }
-    const offset = Math.min(60, Math.floor((freeEnd - freeStart) / 2));
-    const reminder = freeStart + offset;
-    const rh = Math.floor(reminder / 60);
-    const rm = reminder % 60;
-    const period = rh >= 12 ? 'PM' : 'AM';
-    const displayHour = rh % 12 === 0 ? 12 : rh % 12;
-    return `${displayHour}:${String(rm).padStart(2, '0')} ${period}`;
-  };
-
   return (
     <div className="min-h-screen bg-white">
       <Navbar onLogout={handleLogout} />
@@ -167,103 +122,37 @@ export const Settings = () => {
               Settings
             </h1>
             <p className="text-[12px] font-medium text-slate-500">
-              Smart reminder preferences
+              Hourly reminders for unfinished goals
             </p>
           </div>
         </motion.div>
 
         {isLoading ? (
           <div className="space-y-4">
-            <div className="h-64 rounded-[20px] bg-white animate-pulse border border-slate-100" />
-            <div className="h-40 rounded-[20px] bg-white animate-pulse border border-slate-100" />
+            <div className="h-56 rounded-[20px] bg-white animate-pulse border border-slate-100" />
+          </div>
+        ) : loadError ? (
+          <div className="rounded-[20px] border border-red-200 bg-red-50 p-6 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <FiRefreshCw className="h-6 w-6" />
+            </div>
+            <h3 className="text-base font-bold text-red-800">Couldn't load your settings</h3>
+            <p className="mt-1 text-sm text-red-600">{loadError}</p>
+            <Button
+              className="mt-4"
+              onClick={load}
+              leftIcon={<FiRefreshCw className="h-4 w-4" />}
+            >
+              Try Again
+            </Button>
           </div>
         ) : (
           <>
-            {/* Reminder Schedule */}
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mb-4 rounded-[20px] border border-slate-200 bg-white p-5 sm:p-6 shadow-sm"
-            >
-              <div className="mb-5 flex items-center gap-3">
-                <div className="flex h-11 w-11 flex-none items-center justify-center rounded-[14px] bg-blue-50 text-blue-600">
-                  <FiClock className="h-5 w-5" />
-                </div>
-                <div>
-                  <h2 className="text-[16px] font-bold text-slate-900">
-                    Work & Free Time
-                  </h2>
-                  <p className="text-[12.5px] text-slate-500">
-                    Goal reminders are scheduled automatically during your free time.
-                  </p>
-                </div>
-              </div>
-
-              <form onSubmit={handleSave} className="space-y-4">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Input
-                    type="time"
-                    label="Work starts at"
-                    value={settings.workStart}
-                    onChange={(e) => handleFieldChange('workStart', e.target.value)}
-                    required
-                  />
-                  <Input
-                    type="time"
-                    label="Work ends at"
-                    value={settings.workEnd}
-                    onChange={(e) => handleFieldChange('workEnd', e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Input
-                    type="time"
-                    label="Free time starts at"
-                    value={settings.freeStart}
-                    onChange={(e) => handleFieldChange('freeStart', e.target.value)}
-                    required
-                  />
-                  <Input
-                    type="time"
-                    label="Free time ends at"
-                    value={settings.freeEnd}
-                    onChange={(e) => handleFieldChange('freeEnd', e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3">
-                  <p className="text-[12.5px] font-semibold text-slate-600">
-                    Your timezone:{' '}
-                    <span className="font-bold text-slate-900">
-                      {getLocalTimezone()}
-                    </span>
-                  </p>
-                  <p className="mt-0.5 text-[11.5px] text-slate-500">
-                    Reminders are sent at{' '}
-                    <span className="font-bold text-blue-600">
-                      {previewReminder()}
-                    </span>{' '}
-                    on the same day you create a goal.
-                  </p>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button type="submit" isLoading={isSaving}>
-                    Save Settings
-                  </Button>
-                </div>
-              </form>
-            </motion.section>
-
             {/* Notifications */}
             <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.08 }}
+              transition={{ duration: 0.5 }}
               className="mb-4 rounded-[20px] border border-slate-200 bg-white p-5 sm:p-6 shadow-sm"
             >
               <div className="mb-5 flex items-center gap-3">
@@ -275,8 +164,7 @@ export const Settings = () => {
                     Notifications
                   </h2>
                   <p className="text-[12.5px] text-slate-500">
-                    Get a push notification for unfinished goals, even when the app
-                    is closed.
+                    Remind me hourly about unfinished goals.
                   </p>
                 </div>
               </div>
@@ -293,8 +181,7 @@ export const Settings = () => {
                       : 'Push notifications are not supported by this browser.'}
                   </p>
                   <p className="mt-0.5 text-[12px] text-slate-500">
-                    Example: "🔔 You haven't completed 'Learn SQL' yet. Don't
-                    forget to finish today's goal!"
+                    Example: "🔔 You haven't completed 'Learn SQL' yet 💪"
                   </p>
                 </div>
 

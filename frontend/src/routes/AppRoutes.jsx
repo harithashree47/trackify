@@ -3,6 +3,7 @@ import { Login } from '../pages/Login.jsx';
 import { Register } from '../pages/Register.jsx';
 import { Dashboard } from '../pages/Dashboard.jsx';
 import { Goals } from '../pages/Goals.jsx';
+import { Calendar } from '../pages/Calendar.jsx';
 import { Settings } from '../pages/Settings.jsx';
 import { ProtectedRoute } from '../components/ProtectedRoute.jsx';
 import { PublicRoute } from '../components/PublicRoute.jsx';
@@ -42,6 +43,14 @@ export const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Goals />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/calendar"
+        element={
+          <ProtectedRoute>
+            <Calendar />
           </ProtectedRoute>
         }
       />

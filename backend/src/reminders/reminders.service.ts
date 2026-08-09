@@ -2,61 +2,25 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
-import {
-  computeReminderInstant,
-  toLocalDateStr,
-} from '../common/utils/timezone.util';
+import { toLocalDateStr } from '../common/utils/timezone.util';
 
-interface MessageTemplate {
-  title: (name: string) => string;
-  body: (goalTitle: string) => string;
+const ONE_HOUR_MS = 60 * 60 * 1000;
+const MAX_GOALS_IN_MESSAGE = 3;
+
+interface DueGoal {
+  id: number;
+  title: string;
+  createdAt: Date;
+  reminderSentAt: Date | null;
+  user: {
+    id: number;
+    name: string | null;
+    settings: {
+      timezone?: string;
+      notificationsEnabled?: boolean;
+    } | null;
+  };
 }
-
-const REMINDER_MESSAGES: MessageTemplate[] = [
-  {
-    title: (name) => `Hey ${name} 👀`,
-    body: (goal) => `"${goal}" is waiting for you. Don't keep it hungry! 🔥`,
-  },
-  {
-    title: (name) => `${name}, quick reminder! ⏰`,
-    body: (goal) => `Your "${goal}" goal is still pending. Go smash it!`,
-  },
-  {
-    title: (name) => `Psst ${name} 🤫`,
-    body: (goal) => `"${goal}" is still waiting. Today's not over yet!`,
-  },
-  {
-    title: (name) => `${name}, where are you? 👀`,
-    body: (goal) => `"${goal}" is still incomplete. Let's finish it!`,
-  },
-  {
-    title: (name) => `Hey ${name}! 🔥`,
-    body: (goal) => `Your "${goal}" goal is calling. Time to get it done!`,
-  },
-  {
-    title: (name) => `${name}, one more push! 💪`,
-    body: (goal) => `"${goal}" is still pending. You've got this!`,
-  },
-  {
-    title: (name) => `${name} 👋`,
-    body: () => `Your goal hasn't checked itself off yet. Go make it happen!`,
-  },
-  {
-    title: (name) => `Don't forget, ${name}! 😊`,
-    body: (goal) => `"${goal}" is still on today's list.`,
-  },
-  {
-    title: (name) => `${name}, it's goal time! 🚀`,
-    body: (goal) => `Finish "${goal}" and call it a day!`,
-  },
-  {
-    title: (name) => `Hey ${name}, last call! ⏰`,
-    body: (goal) => `"${goal}" is still pending. Finish strong!`,
-  },
-];
-
-const pick = <T,>(arr: T[]): T =>
-  arr[Math.floor(Math.random() * arr.length)];
 
 @Injectable()
 export class RemindersService {
@@ -68,14 +32,10 @@ export class RemindersService {
   ) {}
 
   /**
-   * Runs every minute and sends a single reminder (Web Push notification) for
-   * every goal that is:
-   *   - created today (in the user's timezone),
-   *   - still incomplete,
-   *   - past its automatically scheduled free-time reminder time,
-   *   - and has not been reminded in the last hour.
-   * Only ONE notification per user is sent per run (grouped), and the shared
-   * tag keeps only one visible at a time.
+   * Runs every minute and sends a single grouped reminder (Web Push
+   * notification) to each user who has at least one unfinished goal created
+   * today (in the user's own timezone) and has not been reminded in the last
+   * hour. As soon as every today goal is completed, reminders stop.
    */
   @Cron(CronExpression.EVERY_MINUTE, { name: 'goal-reminders' })
   async handleGoalReminders() {
@@ -111,39 +71,20 @@ export class RemindersService {
       },
     });
 
-    const ONE_HOUR_MS = 60 * 60 * 1000;
-
-    const dueGoals = goals.filter((goal) => {
+    // Keep only today's (in the user's timezone) unfinished goals.
+    const goalsByUser = new Map<number, DueGoal[]>();
+    for (const goal of goals) {
       const settings = goal.user.settings;
-      if (!settings?.notificationsEnabled) return false;
+      if (!settings?.notificationsEnabled) continue;
 
       const timezone = settings.timezone || 'UTC';
-
-      // Reminder must land on the goal's own day.
       if (
         toLocalDateStr(goal.createdAt, timezone) !==
         toLocalDateStr(now, timezone)
       ) {
-        return false;
+        continue;
       }
 
-      const reminderInstant = computeReminderInstant(now, settings);
-      if (!reminderInstant) return false;
-
-      // Only remind again if the last reminder was more than an hour ago.
-      if (
-        goal.reminderSentAt &&
-        now.getTime() - goal.reminderSentAt.getTime() < ONE_HOUR_MS
-      ) {
-        return false;
-      }
-
-      return now.getTime() >= reminderInstant.getTime();
-    });
-
-    // Group due goals by user so each user receives a single notification.
-    const goalsByUser = new Map<number, typeof dueGoals>();
-    for (const goal of dueGoals) {
       const userId = goal.user.id;
       const list = goalsByUser.get(userId) ?? [];
       list.push(goal);
@@ -151,23 +92,41 @@ export class RemindersService {
     }
 
     for (const [userId, userGoals] of goalsByUser) {
-      // Pick one random goal to show in the single notification.
-      const randomGoal =
-        userGoals[Math.floor(Math.random() * userGoals.length)];
+      // One reminder per user per hour, regardless of how many goals are due.
+      const latestReminder = userGoals.reduce<number>(
+        (latest, g) =>
+          g.reminderSentAt
+            ? Math.max(latest, g.reminderSentAt.getTime())
+            : latest,
+        0,
+      );
+      if (latestReminder && now.getTime() - latestReminder < ONE_HOUR_MS) {
+        continue;
+      }
 
       const firstName =
-        randomGoal.user.name?.trim().split(/\s+/)[0] || 'there';
-      const template = pick(REMINDER_MESSAGES);
+        userGoals[0].user.name?.trim().split(/\s+/)[0] || 'there';
+
+      const names = userGoals.map((g) => `'${g.title}'`);
+      const shown = names.slice(0, MAX_GOALS_IN_MESSAGE);
+      const extra = names.length - shown.length;
+
+      const body =
+        names.length === 1
+          ? `🔔 Hey ${firstName}! You haven't completed ${shown[0]} yet. Don't forget to finish today's goal! 💪`
+          : `🔔 Hey ${firstName}! You still have unfinished goals: ${shown.join(
+              ', ',
+            )}${extra > 0 ? ` +${extra} more` : ''}. Don't forget to finish today's goals! 💪`;
 
       await this.pushService.sendNotification(userId, {
-        title: template.title(firstName),
-        body: template.body(randomGoal.title),
+        title: `Today's Goal Reminder`,
+        body,
         url: '/goals',
         tag: 'goal-reminder',
       });
 
-      // Record the reminder time on every due goal so the next one for this
-      // user can only fire again after an hour.
+      // Record the reminder time on every due goal so this user is only
+      // reminded again after a full hour.
       await this.prisma.goal
         .updateMany({
           where: { id: { in: userGoals.map((g) => g.id) } },

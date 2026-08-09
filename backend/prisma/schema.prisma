@@ -52,14 +52,10 @@ model Goal {
   @@map("goals")
 }
 
-// Per-user reminder preferences (work hours / free-time hours / timezone)
+// Per-user reminder preferences (timezone + notification toggle)
 model UserSettings {
   id                  Int      @id @default(autoincrement())
   userId              Int      @unique
-  workStart           String   @default("09:00")
-  workEnd             String   @default("18:00")
-  freeStart           String   @default("18:00")
-  freeEnd             String   @default("22:00")
   timezone            String   @default("UTC")
   notificationsEnabled Boolean  @default(false)
   createdAt           DateTime @default(now())

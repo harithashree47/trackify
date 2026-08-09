@@ -1,10 +1,10 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { FiPlus, FiCheckCircle, FiClock, FiCalendar, FiRefreshCw } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useToast } from '../context/ToastContext.jsx';
-import { goalsApi } from '../api';
+import { useGoals } from '../hooks/useGoals.js';
+import { toDateStr, todayStr } from '../utils/date.js';
 import { Navbar } from '../components/Navbar.jsx';
 import { Button } from '../components/Button.jsx';
 
@@ -25,33 +25,29 @@ const CheckIcon = ({ className = 'h-3.5 w-3.5' }) => (
 export const Dashboard = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { info } = useToast();
-  const [goals, setGoals] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { goals, isLoading, error, retry } = useGoals();
 
-  useEffect(() => {
-    const loadGoals = async () => {
-      try {
-        const data = await goalsApi.getAll();
-        setGoals(data);
-      } catch (error) {
-        console.error('Error fetching goals:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadGoals();
-  }, []);
-
-  const today = new Date();
-  const todayString = today.toISOString().split('T')[0];
-  const formattedDate = today.toLocaleDateString('en-US', {
+  const todayString = todayStr();
+  const formattedDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
   });
 
+  const todayGoals = useMemo(
+    () => goals.filter((g) => toDateStr(g.createdAt) === todayString),
+    [goals, todayString]
+  );
+
   const stats = useMemo(() => {
+    const total = todayGoals.length;
+    const completed = todayGoals.filter((g) => g.completed).length;
+    const pending = total - completed;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { total, completed, pending, percentage };
+  }, [todayGoals]);
+
+  const overallStats = useMemo(() => {
     const total = goals.length;
     const completed = goals.filter((g) => g.completed).length;
     const pending = total - completed;
@@ -63,8 +59,8 @@ export const Dashboard = () => {
     let count = 0;
     const checkDate = new Date();
     while (true) {
-      const ds = checkDate.toISOString().split('T')[0];
-      const dayGoals = goals.filter((g) => g.createdAt.split('T')[0] === ds);
+      const ds = toDateStr(checkDate);
+      const dayGoals = goals.filter((g) => toDateStr(g.createdAt) === ds);
       if (dayGoals.length === 0) break;
       if (!dayGoals.every((g) => g.completed)) break;
       count++;
@@ -72,11 +68,6 @@ export const Dashboard = () => {
     }
     return count;
   }, [goals]);
-
-  const todayGoals = useMemo(() => {
-    const t = goals.filter((g) => g.createdAt.split('T')[0] === todayString);
-    return t.length > 0 ? t.slice(0, 4) : goals.slice(0, 4);
-  }, [goals, todayString]);
 
   const handleLogout = async () => {
     await logout();
@@ -100,6 +91,31 @@ export const Dashboard = () => {
     </div>
   );
 
+  const StatCardSkeleton = () => (
+    <div className="h-[104px] animate-pulse rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center gap-4">
+        <div className="h-[48px] w-[48px] flex-none rounded-[16px] bg-slate-100" />
+        <div className="flex-1 space-y-2.5">
+          <div className="h-3 w-24 rounded bg-slate-100" />
+          <div className="h-6 w-14 rounded bg-slate-100" />
+        </div>
+      </div>
+    </div>
+  );
+
+  const ErrorCard = ({ message, onRetry }) => (
+    <div className="rounded-[20px] border border-red-200 bg-red-50 p-6 text-center">
+      <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+        <FiRefreshCw className="h-6 w-6" />
+      </div>
+      <h3 className="text-base font-bold text-red-800">Couldn't load your data</h3>
+      <p className="mt-1 text-sm text-red-600">{message}</p>
+      <Button className="mt-4" onClick={onRetry} leftIcon={<FiRefreshCw className="h-4 w-4" />}>
+        Try Again
+      </Button>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-white">
       <Navbar onLogout={handleLogout} />
@@ -115,10 +131,10 @@ export const Dashboard = () => {
               className="text-[22px] font-medium tracking-tight sm:text-[30px]"
             >
               {new Date().getHours() < 12
-                ? 'Good morning'
+                ? 'Good Morning'
                 : new Date().getHours() < 18
-                  ? 'Good afternoon'
-                  : 'Good evening'},{' '}
+                  ? 'Good Afternoon'
+                  : 'Good Evening'},{' '}
               {user?.name?.split(' ')[0]}
               <motion.span
                 className="inline-block"
@@ -144,14 +160,33 @@ export const Dashboard = () => {
               {formattedDate} · {stats.pending} goals to complete today
             </motion.p>
           </div>
-          <Button
-            onClick={() => navigate('/goals')}
-            leftIcon={<FiPlus className="h-4 w-4" />}
-          >
-            New Goal
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => navigate('/calendar')}
+              leftIcon={<FiCalendar className="h-4 w-4" />}
+            >
+              Calendar
+            </Button>
+            <Button
+              onClick={() => navigate('/goals')}
+              leftIcon={<FiPlus className="h-4 w-4" />}
+            >
+              New Goal
+            </Button>
+          </div>
         </div>
 
+        {isLoading ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : error ? (
+          <ErrorCard message={error} onRetry={retry} />
+        ) : (
+          <>
         {/* Stats grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard>
@@ -176,7 +211,7 @@ export const Dashboard = () => {
               <FiCheckCircle className="h-6 w-6" />
             </StatIco>
             <div>
-              <small className="block text-[12.5px] font-semibold text-slate-500">Completed Goals</small>
+              <small className="block text-[12.5px] font-semibold text-slate-500">Completed Today</small>
               <b className="mt-0.5 block text-[24px] font-semibold tracking-tight text-slate-900">{stats.completed}</b>
               <span className="mt-0.5 inline-block text-[11.5px] font-bold text-green-600">↑ great job</span>
             </div>
@@ -187,7 +222,7 @@ export const Dashboard = () => {
               <FiClock className="h-6 w-6" />
             </StatIco>
             <div>
-              <small className="block text-[12.5px] font-semibold text-slate-500">Pending Goals</small>
+              <small className="block text-[12.5px] font-semibold text-slate-500">Pending Today</small>
               <b className="mt-0.5 block text-[24px] font-semibold tracking-tight text-slate-900">{stats.pending}</b>
               <span className="mt-0.5 inline-block text-[11.5px] font-bold text-slate-400">waiting on you</span>
             </div>
@@ -280,15 +315,9 @@ export const Dashboard = () => {
               </button>
             </div>
 
-            {isLoading ? (
-              <div className="flex flex-col gap-3">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-[72px] animate-pulse rounded-2xl border border-slate-100 bg-slate-50" />
-                ))}
-              </div>
-            ) : todayGoals.length > 0 ? (
+            {todayGoals.length > 0 ? (
               <div className="flex flex-col gap-2.5">
-                {todayGoals.map((goal) => (
+                {todayGoals.slice(0, 4).map((goal) => (
                   <div
                     key={goal.id}
                     className={`flex items-center gap-3.5 rounded-2xl border p-3.5 transition hover:shadow-md ${
@@ -319,33 +348,28 @@ export const Dashboard = () => {
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[20px] bg-blue-50 text-blue-600">
                   <FiPlus className="h-8 w-8" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900">No goals yet</h3>
-                <p className="mt-1 text-sm text-slate-500">Start by adding your first goal</p>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {goals.length === 0 ? 'No goals yet' : 'No goals for today'}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {goals.length === 0
+                    ? 'Start by adding your first goal'
+                    : 'Plan your day by adding a goal below'}
+                </p>
                 <Button
                   className="mt-5"
-                  onClick={() => info('Click "Add Goal" to get started!')}
+                  onClick={() => navigate('/goals')}
                   leftIcon={<FiPlus className="h-4 w-4" />}
                 >
-                  Add Your First Goal
+                  Add Goals
                 </Button>
               </div>
             )}
           </div>
         </div>
+          </>
+        )}
       </main>
-
-      {/* Floating Add Goal button */}
-      <motion.button
-        onClick={() => navigate('/goals')}
-        whileHover={{ scale: 1.04, y: -2 }}
-        whileTap={{ scale: 0.96 }}
-        className="fixed bottom-9 right-9 z-50 flex items-center gap-2.5 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 px-6 py-4 text-sm font-bold text-white shadow-2xl shadow-blue-600/40"
-      >
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25">
-          <FiPlus className="h-3.5 w-3.5" />
-        </span>
-        Add Goal
-      </motion.button>
     </div>
   );
 };
