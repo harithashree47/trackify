@@ -1,5 +1,12 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api';
+import {
+  getStoredUser,
+  getToken,
+  setSession,
+  clearSession,
+  AUTH_EXPIRED_EVENT,
+} from '../api/session.js';
 
 const AuthContext = createContext(undefined);
 
@@ -17,38 +24,64 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const initAuth = async () => {
+      const token = getToken();
+      const storedUser = getStoredUser();
+
+      if (!token || !storedUser) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Restore the cached profile immediately so the app never flashes a
+      // blank/empty state while the session is being validated.
+      setUser(storedUser);
+
       try {
-        const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
-        if (storedUser && token) {
-          setUser(JSON.parse(storedUser));
+        // Validate the saved token against the backend and fetch the freshest
+        // user profile. Every later API request uses this same restored token.
+        const freshUser = await authApi.me();
+        setSession({ token, user: freshUser });
+        setUser(freshUser);
+      } catch (err) {
+        if (err?.status === 401 || err?.status === 403) {
+          // The stored token is expired/invalid — only then drop the session.
+          clearSession();
+          setUser(null);
         }
-      } catch (error) {
-        console.error('Auth initialization error:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+        // Network/offline errors keep the cached session; the pages handle
+        // their own error/retry states.
       } finally {
         setIsLoading(false);
       }
     };
 
     initAuth();
+
+    // A 401 from any API call (expired token) notifies us so the app can move
+    // to /login cleanly without a full page reload.
+    const handleAuthExpired = () => setUser(null);
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired);
   }, []);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const result = await authApi.login(email, password);
+    setSession(result);
     setUser(result.user);
-  };
+    return result;
+  }, []);
 
-  const register = async (name, email, password) => {
+  const register = useCallback(async (name, email, password) => {
     const result = await authApi.register(name, email, password);
+    setSession(result);
     setUser(result.user);
-  };
+    return result;
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await authApi.logout();
     setUser(null);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider

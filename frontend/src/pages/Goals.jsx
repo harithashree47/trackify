@@ -43,9 +43,9 @@ const QUOTES = [
 export const Goals = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const { success, error } = useToast();
-  const { goals, setGoals, isLoading } = useGoals();
+  const { goals, setGoals, isLoading } = useGoals({ enabled: isAuthenticated });
   const quote = useMemo(
     () => QUOTES[Math.floor(Math.random() * QUOTES.length)],
     []

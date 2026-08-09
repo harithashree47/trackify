@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
@@ -23,13 +23,29 @@ interface DueGoal {
 }
 
 @Injectable()
-export class RemindersService {
+export class RemindersService implements OnModuleInit {
   private readonly logger = new Logger(RemindersService.name);
 
   constructor(
     private prisma: PrismaService,
     private pushService: PushService,
   ) {}
+
+  /**
+   * When the backend process starts (including when a hosted instance wakes up
+   * after sleeping), run one reminder pass so any missed reminder window is
+   * delivered to users with unfinished goals. The per-user per-hour guard in
+   * `processDueReminders` prevents duplicate/spammy notifications.
+   */
+  async onModuleInit() {
+    setTimeout(() => {
+      this.handleGoalReminders().catch((err: any) => {
+        this.logger.error(
+          `Startup reminder pass failed: ${err?.message || err}`,
+        );
+      });
+    }, 15_000);
+  }
 
   /**
    * Runs every minute and sends a single grouped reminder (Web Push

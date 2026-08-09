@@ -86,3 +86,23 @@ export const disablePushNotifications = async () => {
 
   return { subscribed: false };
 };
+
+// Re-syncs the device's existing push subscription with the backend. Called
+// once on app startup so notifications keep working across restarts even if
+// the server lost the subscription (e.g. DB reset). It is a no-op for users
+// who never enabled notifications, and never creates duplicate subscriptions.
+export const syncPushSubscription = async () => {
+  if (!isSupported()) return { synced: false };
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    if (!subscription) return { synced: false };
+
+    await pushApi.subscribe(subscription.toJSON());
+    return { synced: true };
+  } catch (error) {
+    console.error('Failed to sync push subscription on startup:', error);
+    return { synced: false };
+  }
+};

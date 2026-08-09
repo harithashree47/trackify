@@ -13,7 +13,7 @@
  *    in Cache Storage.
  */
 
-const CACHE_VERSION = 'trackify-v1.0.2';
+const CACHE_VERSION = 'trackify-v1.0.3';
 
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;

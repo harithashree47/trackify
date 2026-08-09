@@ -52,8 +52,8 @@ const ErrorCard = ({ message, onRetry }) => (
 
 export const Calendar = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
-  const { goals, isLoading, error, retry } = useGoals();
+  const { logout, isAuthenticated } = useAuth();
+  const { goals, isLoading, error, retry } = useGoals({ enabled: isAuthenticated });
 
   const todayStrLocal = todayStr();
   const [tooltip, setTooltip] = useState(null);

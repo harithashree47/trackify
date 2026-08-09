@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
 import { AppRoutes } from './routes/AppRoutes.jsx';
 import InstallPrompt from './pwa/InstallPrompt.jsx';
+import { StartupSync } from './components/StartupSync.jsx';
 
 const App = () => {
   return (
@@ -11,6 +12,7 @@ const App = () => {
         <ToastProvider>
           <AppRoutes />
           <InstallPrompt />
+          <StartupSync />
         </ToastProvider>
       </AuthProvider>
     </BrowserRouter>

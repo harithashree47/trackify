@@ -1,27 +1,12 @@
 import config from '../config.js';
+import { getToken, handleApiResponse } from './session.js';
 
 const API_URL = `${config.API_BASE_URL}/push`;
 
 const getAuthHeader = () => ({
-  Authorization: `Bearer ${localStorage.getItem('token')}`,
+  Authorization: `Bearer ${getToken()}`,
   'Content-Type': 'application/json',
 });
-
-const handleResponse = async (response) => {
-  if (response.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
-  }
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Request failed: ${response.status}`);
-  }
-
-  return response.json();
-};
 
 export const pushApi = {
   // Get the server's VAPID public key
@@ -38,7 +23,7 @@ export const pushApi = {
       headers: getAuthHeader(),
       body: JSON.stringify(subscription),
     });
-    return handleResponse(response);
+    return handleApiResponse(response);
   },
 
   // Remove the current user's push subscriptions from the server
@@ -47,6 +32,6 @@ export const pushApi = {
       method: 'DELETE',
       headers: getAuthHeader(),
     });
-    return handleResponse(response);
+    return handleApiResponse(response);
   },
 };

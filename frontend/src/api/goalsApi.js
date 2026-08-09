@@ -1,27 +1,12 @@
 import config from '../config.js';
+import { getToken, handleApiResponse } from './session.js';
 
 const API_URL = `${config.API_BASE_URL}/goals`;
 
 const getAuthHeader = () => ({
-  Authorization: `Bearer ${localStorage.getItem('token')}`,
+  Authorization: `Bearer ${getToken()}`,
   'Content-Type': 'application/json',
 });
-
-const handleResponse = async (response) => {
-  if (response.status === 401) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
-  }
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || `Request failed: ${response.status}`);
-  }
-
-  return response.json();
-};
 
 export const goalsApi = {
   // Get all goals for current user
@@ -29,7 +14,7 @@ export const goalsApi = {
     const response = await fetch(API_URL, {
       headers: getAuthHeader(),
     });
-    const data = await handleResponse(response);
+    const data = await handleApiResponse(response);
     return Array.isArray(data) ? data : data?.goals || [];
   },
 
@@ -38,7 +23,7 @@ export const goalsApi = {
     const response = await fetch(`${API_URL}/${id}`, {
       headers: getAuthHeader(),
     });
-    return handleResponse(response);
+    return handleApiResponse(response);
   },
 
   // Create a new goal
@@ -48,7 +33,7 @@ export const goalsApi = {
       headers: getAuthHeader(),
       body: JSON.stringify({ title, description, priority }),
     });
-    return handleResponse(response);
+    return handleApiResponse(response);
   },
 
   // Update a goal
@@ -58,7 +43,7 @@ export const goalsApi = {
       headers: getAuthHeader(),
       body: JSON.stringify({ title, description }),
     });
-    return handleResponse(response);
+    return handleApiResponse(response);
   },
 
   // Toggle goal completion
@@ -67,7 +52,7 @@ export const goalsApi = {
       method: 'PATCH',
       headers: getAuthHeader(),
     });
-    return handleResponse(response);
+    return handleApiResponse(response);
   },
 
   // Delete a goal
@@ -76,6 +61,6 @@ export const goalsApi = {
       method: 'DELETE',
       headers: getAuthHeader(),
     });
-    return handleResponse(response);
+    return handleApiResponse(response);
   },
 };

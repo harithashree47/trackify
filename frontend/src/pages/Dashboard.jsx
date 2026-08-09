@@ -24,8 +24,8 @@ const CheckIcon = ({ className = 'h-3.5 w-3.5' }) => (
 
 export const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  const { goals, isLoading, error, retry } = useGoals();
+  const { user, logout, isAuthenticated } = useAuth();
+  const { goals, isLoading, error, retry } = useGoals({ enabled: isAuthenticated });
 
   const todayString = todayStr();
   const formattedDate = new Date().toLocaleDateString('en-US', {

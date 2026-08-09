@@ -1,7 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { goalsApi } from '../api';
 
-export const useGoals = () => {
+// `enabled` is used to delay fetching until the auth session has been restored
+// on startup, so protected pages never briefly render an empty/default state.
+export const useGoals = ({ enabled = true } = {}) => {
   const [goals, setGoals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -20,8 +22,12 @@ export const useGoals = () => {
   }, []);
 
   useEffect(() => {
+    if (!enabled) {
+      setIsLoading(false);
+      return;
+    }
     load();
-  }, [load]);
+  }, [load, enabled]);
 
   return { goals, setGoals, isLoading, error, retry: load };
 };
