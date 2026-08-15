@@ -5,6 +5,8 @@ import { FiPlus, FiCheckCircle, FiClock, FiCalendar, FiRefreshCw } from 'react-i
 import { useAuth } from '../context/AuthContext.jsx';
 import { useGoals } from '../hooks/useGoals.js';
 import { toDateStr, todayStr } from '../utils/date.js';
+import { calculateStreak } from '../utils/streak.js';
+import { getMilestone, getNextMilestone } from '../utils/milestones.js';
 import { Navbar } from '../components/Navbar.jsx';
 import { Button } from '../components/Button.jsx';
 
@@ -55,19 +57,9 @@ export const Dashboard = () => {
     return { total, completed, pending, percentage };
   }, [goals]);
 
-  const streak = useMemo(() => {
-    let count = 0;
-    const checkDate = new Date();
-    while (true) {
-      const ds = toDateStr(checkDate);
-      const dayGoals = goals.filter((g) => toDateStr(g.createdAt) === ds);
-      if (dayGoals.length === 0) break;
-      if (!dayGoals.every((g) => g.completed)) break;
-      count++;
-      checkDate.setDate(checkDate.getDate() - 1);
-    }
-    return count;
-  }, [goals]);
+  const streak = useMemo(() => calculateStreak(goals), [goals]);
+  const streakReward = useMemo(() => getMilestone(streak), [streak]);
+  const nextReward = useMemo(() => getNextMilestone(streak), [streak]);
 
   const handleLogout = async () => {
     await logout();
@@ -236,8 +228,14 @@ export const Dashboard = () => {
             </StatIco>
             <div>
               <small className="block text-[12.5px] font-semibold text-slate-500">Current Streak</small>
-              <b className="mt-0.5 block text-[24px] font-semibold tracking-tight text-slate-900">{streak} day{streak === 1 ? '' : 's'}</b>
-              <span className="mt-0.5 inline-block text-[11.5px] font-bold text-slate-400">keep going!</span>
+              <b className="mt-0.5 block text-[24px] font-semibold tracking-tight text-slate-900">
+                {streakReward.reward} {streak} day{streak === 1 ? '' : 's'}
+              </b>
+              <span className="mt-0.5 inline-block text-[11.5px] font-bold text-amber-500">
+                {nextReward
+                  ? `${nextReward.days - streak} more day${nextReward.days - streak === 1 ? '' : 's'} to ${nextReward.label}`
+                  : 'max streak reached!'}
+              </span>
             </div>
           </StatCard>
         </div>

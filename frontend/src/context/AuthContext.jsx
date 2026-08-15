@@ -35,10 +35,12 @@ export const AuthProvider = ({ children }) => {
       // Restore the cached profile immediately so the app never flashes a
       // blank/empty state while the session is being validated.
       setUser(storedUser);
+      setIsLoading(false);
 
       try {
         // Validate the saved token against the backend and fetch the freshest
-        // user profile. Every later API request uses this same restored token.
+        // user profile in the background, so the app renders instantly even
+        // when the backend is slow. Every later API request uses this token.
         const freshUser = await authApi.me();
         setSession({ token, user: freshUser });
         setUser(freshUser);
@@ -50,8 +52,6 @@ export const AuthProvider = ({ children }) => {
         }
         // Network/offline errors keep the cached session; the pages handle
         // their own error/retry states.
-      } finally {
-        setIsLoading(false);
       }
     };
 

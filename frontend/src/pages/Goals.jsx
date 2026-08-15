@@ -14,7 +14,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { goalsApi } from '../api';
 import { useGoals } from '../hooks/useGoals.js';
-import { toDateStr, shiftDay, todayStr, getDayNumber, DAY_MS } from '../utils/date.js';
+import { toDateStr, shiftDay, todayStr, getDayNumber } from '../utils/date.js';
+import { calculateStreak as computeStreak } from '../utils/streak.js';
 import { Navbar } from '../components/Navbar.jsx';
 import { Button } from '../components/Button.jsx';
 import { Input } from '../components/Input.jsx';
@@ -82,20 +83,7 @@ export const Goals = () => {
   const isFuture = selectedDate > todayString;
   const isPastDay = selectedDate < todayString;
 
-  const calculateStreak = useMemo(() => {
-    let streak = 0;
-    let checkDate = new Date(todayString);
-
-    while (true) {
-      const dateStr = toDateStr(checkDate);
-      const dayGoalsList = goals.filter((g) => toDateStr(g.createdAt) === dateStr);
-      if (dayGoalsList.length === 0) break;
-      if (!dayGoalsList.every((g) => g.completed)) break;
-      streak++;
-      checkDate = new Date(checkDate.getTime() - DAY_MS);
-    }
-    return streak;
-  }, [goals, todayString]);
+  const calculateStreak = useMemo(() => computeStreak(goals), [goals]);
 
   const dayLabel = () => {
     if (isToday) return 'Today';

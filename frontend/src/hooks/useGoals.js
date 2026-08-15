@@ -1,33 +1,9 @@
-import { useState, useCallback, useEffect } from 'react';
-import { goalsApi } from '../api';
+import { useGoalsContext } from '../context/GoalsContext.jsx';
 
-// `enabled` is used to delay fetching until the auth session has been restored
-// on startup, so protected pages never briefly render an empty/default state.
+// Goals are fetched once by the GoalsProvider and shared across all pages.
+// The `enabled` option is kept for API compatibility; fetching is driven by
+// the auth state inside the provider.
 export const useGoals = ({ enabled = true } = {}) => {
-  const [goals, setGoals] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await goalsApi.getAll();
-      setGoals(data);
-    } catch (err) {
-      setError(err.message || 'Failed to load goals.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!enabled) {
-      setIsLoading(false);
-      return;
-    }
-    load();
-  }, [load, enabled]);
-
-  return { goals, setGoals, isLoading, error, retry: load };
+  const { goals, setGoals, isLoading, error, retry } = useGoalsContext();
+  return { goals, setGoals, isLoading, error, retry };
 };

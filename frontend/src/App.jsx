@@ -1,5 +1,6 @@
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { GoalsProvider } from './context/GoalsContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
 import { AppRoutes } from './routes/AppRoutes.jsx';
 import InstallPrompt from './pwa/InstallPrompt.jsx';
@@ -9,11 +10,13 @@ const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ToastProvider>
-          <AppRoutes />
-          <InstallPrompt />
-          <StartupSync />
-        </ToastProvider>
+        <GoalsProvider>
+          <ToastProvider>
+            <AppRoutes />
+            <InstallPrompt />
+            <StartupSync />
+          </ToastProvider>
+        </GoalsProvider>
       </AuthProvider>
     </BrowserRouter>
   );
