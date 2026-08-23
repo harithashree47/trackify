@@ -1,5 +1,5 @@
 import config from '../config.js';
-import { getToken, handleApiResponse } from './session.js';
+import { getToken, apiFetch, handleApiResponse } from './session.js';
 
 const API_URL = `${config.API_BASE_URL}/goals`;
 
@@ -11,24 +11,28 @@ const getAuthHeader = () => ({
 export const goalsApi = {
   // Get all goals for current user
   getAll: async () => {
-    const response = await fetch(API_URL, {
-      headers: getAuthHeader(),
-    });
+    const response = await apiFetch(
+      API_URL,
+      { headers: getAuthHeader() },
+      { retries: 1 }
+    );
     const data = await handleApiResponse(response);
     return Array.isArray(data) ? data : data?.goals || [];
   },
 
   // Get a single goal
   getById: async (id) => {
-    const response = await fetch(`${API_URL}/${id}`, {
-      headers: getAuthHeader(),
-    });
+    const response = await apiFetch(
+      `${API_URL}/${id}`,
+      { headers: getAuthHeader() },
+      { retries: 1 }
+    );
     return handleApiResponse(response);
   },
 
   // Create a new goal
   create: async (title, description, priority = 'medium') => {
-    const response = await fetch(API_URL, {
+    const response = await apiFetch(API_URL, {
       method: 'POST',
       headers: getAuthHeader(),
       body: JSON.stringify({ title, description, priority }),
@@ -38,7 +42,7 @@ export const goalsApi = {
 
   // Update a goal
   update: async (id, title, description) => {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await apiFetch(`${API_URL}/${id}`, {
       method: 'PATCH',
       headers: getAuthHeader(),
       body: JSON.stringify({ title, description }),
@@ -48,7 +52,7 @@ export const goalsApi = {
 
   // Toggle goal completion
   toggleComplete: async (id) => {
-    const response = await fetch(`${API_URL}/${id}/toggle`, {
+    const response = await apiFetch(`${API_URL}/${id}/toggle`, {
       method: 'PATCH',
       headers: getAuthHeader(),
     });

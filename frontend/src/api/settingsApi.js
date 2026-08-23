@@ -1,5 +1,5 @@
 import config from '../config.js';
-import { getToken, handleApiResponse } from './session.js';
+import { getToken, apiFetch, handleApiResponse } from './session.js';
 
 const API_URL = `${config.API_BASE_URL}/settings`;
 
@@ -11,9 +11,11 @@ const getAuthHeader = () => ({
 export const settingsApi = {
   // Get reminder settings for current user
   get: async () => {
-    const response = await fetch(API_URL, {
-      headers: getAuthHeader(),
-    });
+    const response = await apiFetch(
+      API_URL,
+      { headers: getAuthHeader() },
+      { retries: 1 }
+    );
     return handleApiResponse(response);
   },
 

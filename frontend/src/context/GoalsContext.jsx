@@ -45,12 +45,13 @@ const clearCache = () => {
 // Repeat visits render instantly from a local cache (stale-while-revalidate)
 // while the fresh copy is fetched in the background.
 export const GoalsProvider = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const [goals, setGoals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const fetchedRef = useRef(false);
   const hasDataRef = useRef(false);
+  const wasAuthenticatedRef = useRef(false);
 
   const load = useCallback(async () => {
     if (!hasDataRef.current) setIsLoading(true);
@@ -72,29 +73,43 @@ export const GoalsProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    // Wait until AuthProvider has finished restoring the saved session before
+    // touching any state or the cache. On mount this provider's effect runs
+    // BEFORE the AuthProvider's restore effect (child effects fire first), and
+    // `isAuthenticated` is still false at that moment — treating that instant
+    // as a real logout used to wipe the cached goals on every app open.
+    if (isAuthLoading) return;
+
     if (!isAuthenticated) {
       setGoals([]);
       setError(null);
       setIsLoading(false);
       hasDataRef.current = false;
       fetchedRef.current = false;
-      clearCache();
+      // Only drop the persisted cache for a genuine logout / expired token.
+      // A user whose session is still being restored must keep their cache.
+      if (wasAuthenticatedRef.current) {
+        wasAuthenticatedRef.current = false;
+        clearCache();
+      }
       return;
     }
+
+    wasAuthenticatedRef.current = true;
 
     if (fetchedRef.current) return;
     fetchedRef.current = true;
 
     // Render instantly from the local cache while the fresh copy loads.
     const cached = readCache();
-    if (cached) {
-      hasDataRef.current = cached.length > 0;
+    if (cached && cached.length > 0) {
+      hasDataRef.current = true;
       setGoals(cached);
       setIsLoading(false);
     }
 
     load();
-  }, [isAuthenticated, load]);
+  }, [isAuthenticated, isAuthLoading, load]);
 
   return (
     <GoalsContext.Provider value={{ goals, setGoals, isLoading, error, retry: load }}>

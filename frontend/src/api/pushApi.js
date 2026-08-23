@@ -1,5 +1,5 @@
 import config from '../config.js';
-import { getToken, handleApiResponse } from './session.js';
+import { getToken, apiFetch, handleApiResponse } from './session.js';
 
 const API_URL = `${config.API_BASE_URL}/push`;
 
@@ -11,7 +11,11 @@ const getAuthHeader = () => ({
 export const pushApi = {
   // Get the server's VAPID public key
   getVapidPublicKey: async () => {
-    const response = await fetch(`${API_URL}/vapid-public-key`);
+    const response = await apiFetch(
+      `${API_URL}/vapid-public-key`,
+      {},
+      { retries: 1 }
+    );
     if (!response.ok) return { publicKey: '' };
     return response.json();
   },

@@ -3,6 +3,7 @@ import {
   getToken,
   setSession,
   clearSession,
+  apiFetch,
   handleApiResponse,
 } from './session.js';
 
@@ -10,7 +11,7 @@ const API_URL = `${config.API_BASE_URL}/auth`;
 
 export const authApi = {
   login: async (email, password) => {
-    const response = await fetch(`${API_URL}/login`, {
+    const response = await apiFetch(`${API_URL}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -30,7 +31,7 @@ export const authApi = {
   },
 
   register: async (name, email, password) => {
-    const response = await fetch(`${API_URL}/register`, {
+    const response = await apiFetch(`${API_URL}/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -57,12 +58,16 @@ export const authApi = {
       throw Object.assign(new Error('No session'), { status: 401 });
     }
 
-    const response = await fetch(`${config.API_BASE_URL}/users/me`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
+    const response = await apiFetch(
+      `${config.API_BASE_URL}/users/me`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       },
-    });
+      { retries: 1 }
+    );
 
     if (response.status === 401 || response.status === 403) {
       throw Object.assign(new Error('Session expired'), {
