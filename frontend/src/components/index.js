@@ -1,6 +1,7 @@
 export { Button } from './Button.jsx';
 export { Card } from './Card.jsx';
 export { Checkbox } from './Checkbox.jsx';
+export { CelebrationOverlay } from './CelebrationOverlay.jsx';
 export { DateRangePicker } from './DateRangePicker.jsx';
 export { StreakIndicator } from './StreakIndicator.jsx';
 export { CircularProgress } from './CircularProgress.jsx';

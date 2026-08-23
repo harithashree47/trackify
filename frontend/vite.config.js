@@ -16,4 +16,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  build: {
+    // Inline the success sound as a data URI so the single-file PWA
+    // stays fully self-contained (works offline).
+    assetsInlineLimit: (filePath) => filePath.endsWith(".mp3"),
+  },
 });

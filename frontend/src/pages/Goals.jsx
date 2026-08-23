@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -21,6 +21,15 @@ import { Button } from '../components/Button.jsx';
 import { Input } from '../components/Input.jsx';
 import { Modal } from '../components/Modal.jsx';
 import { StreakIndicator } from '../components/StreakIndicator.jsx';
+import { CelebrationOverlay } from '../components/CelebrationOverlay.jsx';
+import { StreakModal } from '../components/StreakModal.jsx';
+import {
+  unlockAudio,
+  playSuccessSound,
+  playWinSound,
+  fireGoalConfetti,
+  firePerfectDayConfetti,
+} from '../utils/celebrate.js';
 import { FaCrown } from 'react-icons/fa';
 
 const QUOTES = [
@@ -66,6 +75,20 @@ export const Goals = () => {
   const [selectedGoal, setSelectedGoal] = useState(null);
   const [title, setTitle] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [celebration, setCelebration] = useState(null);
+  const [isStreakModalOpen, setIsStreakModalOpen] = useState(false);
+  const celebrationTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(celebrationTimer.current), []);
+
+  const showCelebration = (type, streak) => {
+    clearTimeout(celebrationTimer.current);
+    setCelebration({ id: Date.now(), type, streak });
+    celebrationTimer.current = setTimeout(
+      () => setCelebration(null),
+      type === 'perfect-day' ? 4500 : 3200
+    );
+  };
 
   const dayGoals = useMemo(
     () =>
@@ -203,12 +226,34 @@ export const Goals = () => {
 
   const handleToggleGoal = async (id) => {
     if (isPastDay) return;
+    // Runs synchronously inside the tap gesture so mobile/PWA browsers
+    // permit audio playback (autoplay policy).
+    unlockAudio();
+    const goal = dayGoals.find((g) => g.id === id);
+    const willComplete = !!goal && !goal.completed;
     try {
-      const goal = dayGoals.find((g) => g.id === id);
       const updatedGoal = await goalsApi.toggleComplete(id);
-      setGoals((prev) => prev.map((g) => (g.id === id ? updatedGoal : g)));
-      if (goal && !goal.completed) {
-        success('Goal completed! 🎉');
+      // Build the next list synchronously so streak/celebration reflect
+      // this toggle immediately (state updates are async).
+      const nextGoals = goals.map((g) => (g.id === id ? updatedGoal : g));
+      setGoals(nextGoals);
+      if (!willComplete) return;
+
+      // Streak, activity calendar and analytics are all derived from the
+      // goals state updated above, so they stay in sync automatically.
+      const dayAllDone = dayGoals.every((g) =>
+        g.id === id ? true : g.completed
+      );
+
+      if (dayAllDone) {
+        // Perfect day: game-win fanfare + big confetti + streak modal
+        playWinSound();
+        firePerfectDayConfetti();
+        setIsStreakModalOpen(true);
+      } else {
+        playSuccessSound();
+        fireGoalConfetti();
+        showCelebration('goal');
       }
     } catch (err) {
       error('Failed to update goal status.');
@@ -255,6 +300,7 @@ export const Goals = () => {
   return (
     <div className="min-h-screen bg-white">
       <Navbar onLogout={handleLogout} />
+      <CelebrationOverlay celebration={celebration} />
 
       <main className="max-w-2xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
         {/* Daily Quote Announcement Bar */}
@@ -442,9 +488,9 @@ export const Goals = () => {
           </div>
         </motion.div>
 
-        {/* Streak celebration when today is complete */}
-        {isToday && allComplete && (
-          <div className="relative mb-4 rounded-[20px] bg-white p-4 shadow-lg border border-slate-100 overflow-hidden">
+        {/* Streak celebration when today is complete (hidden while its modal is open) */}
+        {isToday && allComplete && !isStreakModalOpen && (
+          <div className="relative mb-4">
             <StreakIndicator
               streak={calculateStreak}
               totalToday={totalCount}
@@ -661,6 +707,13 @@ export const Goals = () => {
           </div>
         </div>
       </Modal>
+      {/* Perfect Day - Streak Celebration Modal */}
+      <StreakModal
+        isOpen={isStreakModalOpen}
+        onClose={() => setIsStreakModalOpen(false)}
+        streak={calculateStreak}
+        totalToday={totalCount}
+      />
     </div>
   );
 };
