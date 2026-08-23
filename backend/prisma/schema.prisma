@@ -22,6 +22,7 @@ model User {
   role      UserRole @default(USER)
   isActive  Boolean  @default(true)
   lastLogin DateTime?
+  avatarUrl String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

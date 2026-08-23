@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { FiDownload, FiX } from 'react-icons/fi';
 import { Button } from '../components/Button.jsx';
 import logoImg from '../assets/logo1.png';
@@ -34,6 +33,9 @@ const InstallPrompt = () => {
     const handleBeforeInstallPrompt = (event) => {
       event.preventDefault();
       if (isStandalone()) return;
+      // Respect a previous "Later" tap — otherwise the modal keeps coming
+      // back on every visit and blocks the whole UI while it is open.
+      if (localStorage.getItem(DISMISS_KEY)) return;
       setDeferredPrompt(event);
       setShowModal(true);
     };
@@ -78,26 +80,29 @@ const InstallPrompt = () => {
   };
 
   return (
-    <AnimatePresence>
-      {showModal && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-            onClick={closeModal}
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="fixed left-1/2 top-1/2 z-50 w-[min(20rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white p-6 text-center shadow-2xl"
-            role="dialog"
-            aria-modal="true"
-          >
+    // Always mounted; CSS transitions only. AnimatePresence around a
+    // full-screen backdrop has left invisible click-blockers behind before,
+    // which is how the hamburger menu appeared to "not work".
+    <div
+      className={`fixed inset-0 z-[90] ${showModal ? '' : 'pointer-events-none'}`}
+      aria-hidden={!showModal}
+    >
+      {/* Backdrop */}
+      <div
+        onClick={closeModal}
+        className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ${
+          showModal ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+      {/* Dialog */}
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        <div
+          role="dialog"
+          aria-modal="true"
+          className={`w-full max-w-[20rem] rounded-2xl bg-white p-6 text-center shadow-2xl transition-all duration-200 ${
+            showModal ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+          }`}
+        >
             <button
               onClick={closeModal}
               aria-label="Close"
@@ -134,10 +139,9 @@ const InstallPrompt = () => {
                 Install
               </Button>
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          </div>
+        </div>
+      </div>
   );
 };
 

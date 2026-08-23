@@ -5,6 +5,7 @@ import { Dashboard } from '../pages/Dashboard.jsx';
 import { Goals } from '../pages/Goals.jsx';
 import { Calendar } from '../pages/Calendar.jsx';
 import { Settings } from '../pages/Settings.jsx';
+import { Profile } from '../pages/Profile.jsx';
 import { ProtectedRoute } from '../components/ProtectedRoute.jsx';
 import { PublicRoute } from '../components/PublicRoute.jsx';
 
@@ -59,6 +60,14 @@ export const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         }
       />

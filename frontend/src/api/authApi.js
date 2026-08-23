@@ -1,6 +1,7 @@
 import config from '../config.js';
 import {
   getToken,
+  getStoredUser,
   setSession,
   clearSession,
   apiFetch,
@@ -82,6 +83,63 @@ export const authApi = {
 
     const result = await response.json();
     return result?.data ?? result;
+  },
+
+  // Updates the signed-in user's profile (name / email). Returns the fresh
+  // profile and persists it so the session stays in sync everywhere.
+  updateProfile: async ({ name, email }) => {
+    const token = getToken();
+    if (!token) {
+      throw Object.assign(new Error('No session'), { status: 401 });
+    }
+
+    const response = await apiFetch(`${config.API_BASE_URL}/users/me`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ...(name !== undefined ? { name } : {}), ...(email !== undefined ? { email } : {}) }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Could not update your profile');
+    }
+
+    const result = await response.json();
+    const user = result?.data ?? result;
+    setSession({ token, user: { ...getStoredUser(), ...user } });
+    return user;
+  },
+
+  // Uploads a new profile picture (multipart). Returns the fresh profile
+  // with the new avatarUrl and persists it into the stored session.
+  uploadAvatar: async (file) => {
+    const token = getToken();
+    if (!token) {
+      throw Object.assign(new Error('No session'), { status: 401 });
+    }
+
+    // NOTE: no Content-Type header — the browser sets the multipart boundary.
+    const body = new FormData();
+    body.append('file', file);
+
+    const response = await apiFetch(`${config.API_BASE_URL}/users/me/avatar`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Could not upload your picture');
+    }
+
+    const result = await response.json();
+    const user = result?.data ?? result;
+    setSession({ token, user: { ...getStoredUser(), ...user } });
+    return user;
   },
 
   logout: async () => {

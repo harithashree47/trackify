@@ -16,3 +16,7 @@ prisma/*.db-journal
 
 # misc
 .DS_Store
+
+
+/uploads
+
