@@ -33,7 +33,7 @@ export const Profile = () => {
   const fileInputRef = useRef(null);
 
   const storedAvatar = resolveAssetUrl(user?.avatarUrl);
-  const [avatarPreview, setAvatarPreview] = useState(storedAvatar);
+  const [avatarPreview, setAvatarPreview] = useState(null);
   const avatarSrc = avatarPreview ?? storedAvatar;
 
   const memberSince = user?.createdAt
@@ -110,6 +110,7 @@ export const Profile = () => {
       error(err.message || 'Could not upload your picture.');
     } finally {
       setIsUploadingAvatar(false);
+      setAvatarPreview(null);
       URL.revokeObjectURL(previewUrl);
     }
   };

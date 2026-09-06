@@ -59,7 +59,7 @@ export const GoalsProvider = ({ children }) => {
     try {
       const data = await goalsApi.getAll();
       setGoals(data);
-      hasDataRef.current = data.length > 0;
+      hasDataRef.current = true;
       writeCache(data);
     } catch (err) {
       // Keep showing cached data on a failed background refresh; only surface
@@ -102,7 +102,7 @@ export const GoalsProvider = ({ children }) => {
 
     // Render instantly from the local cache while the fresh copy loads.
     const cached = readCache();
-    if (cached && cached.length > 0) {
+    if (cached !== null) {
       hasDataRef.current = true;
       setGoals(cached);
       setIsLoading(false);
@@ -110,6 +110,21 @@ export const GoalsProvider = ({ children }) => {
 
     load();
   }, [isAuthenticated, isAuthLoading, load]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isAuthenticated) {
+        load();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Also listen to focus as a fallback for desktop browsers
+    window.addEventListener('focus', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [isAuthenticated, load]);
 
   return (
     <GoalsContext.Provider value={{ goals, setGoals, isLoading, error, retry: load }}>

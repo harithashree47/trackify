@@ -95,14 +95,20 @@ export const apiFetch = async (url, options = {}, { retries = 0 } = {}) => {
   const canRetry = method === 'GET' && retries > 0;
   const timeoutMs = method === 'GET' ? GET_TIMEOUT_MS : SUBMIT_TIMEOUT_MS;
 
+  const fetchOptions = { ...options };
+  if (method === 'GET' && !fetchOptions.cache) {
+    fetchOptions.cache = 'no-store';
+  }
+
   let lastError = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    fetchOptions.signal = controller.signal;
 
     try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
+      const response = await fetch(url, fetchOptions);
 
       // Retry transient gateway errors (sleeping/waking backend) for GETs.
       if (

@@ -68,6 +68,17 @@ export class PushService {
       create: { userId, notificationsEnabled: true },
     });
 
+    this.sendNotification(userId, {
+      title: 'Notifications Enabled! 🎉',
+      body: 'You will now receive hourly reminders for your unfinished goals.',
+      url: '/goals',
+      tag: 'push-welcome',
+    }).catch((err) => {
+      this.logger.error(
+        `Failed to send welcome notification: ${err?.message || err}`,
+      );
+    });
+
     return { success: true, subscription };
   }
 
