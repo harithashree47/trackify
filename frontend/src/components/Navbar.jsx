@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiLogOut, FiSettings, FiCalendar } from 'react-icons/fi';
+import { FiLogOut, FiSettings, FiCalendar, FiTrendingUp } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { resolveAssetUrl } from '../config.js';
@@ -58,6 +58,14 @@ export const Navbar = ({ onLogout }) => {
         </div>
 
         {/* On phones these live inside the hamburger drawer instead. */}
+        <button
+          onClick={() => navigate('/analytics')}
+          title="Analytics"
+          className="hidden h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200 hover:text-slate-800 sm:flex"
+        >
+          <FiTrendingUp className="h-[18px] w-[18px]" />
+        </button>
+
         <button
           onClick={() => navigate('/calendar')}
           title="Activity Calendar"

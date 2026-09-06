@@ -8,6 +8,7 @@ import {
   FiCalendar,
   FiBell,
   FiUser,
+  FiTrendingUp,
   FiLogOut,
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -16,6 +17,7 @@ import { Logo } from './Logo.jsx';
 
 const MENU_ITEMS = [
   { label: 'Dashboard', icon: FiHome, to: '/dashboard' },
+  { label: 'Analytics', icon: FiTrendingUp, to: '/analytics' },
   { label: 'Goals', icon: FiTarget, to: '/goals' },
   { label: 'Calendar', icon: FiCalendar, to: '/calendar' },
   { label: 'Notifications & Settings', icon: FiBell, to: '/settings' },
