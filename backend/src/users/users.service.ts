@@ -134,7 +134,8 @@ export class UsersService {
       const result = await this.cloudinaryService.uploadImage(file);
       avatarUrl = result.secure_url;
     } catch (error) {
-      throw new BadRequestException('Failed to upload image to Cloudinary');
+      console.error('Cloudinary Upload Error:', error);
+      throw new BadRequestException(`Failed to upload image to Cloudinary: ${error?.message || 'Unknown error'}`);
     }
 
     const updated = await this.prisma.user.update({
