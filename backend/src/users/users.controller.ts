@@ -11,9 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { memoryStorage } from 'multer';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -60,19 +58,7 @@ export class UsersController {
   @Post('me/avatar')
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: (req: any, file: any, cb: any) => {
-          const dir = join(process.cwd(), 'uploads', 'avatars');
-          if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-          cb(null, dir);
-        },
-        filename: (req: any, file: any, cb: any) => {
-          // One file per user per upload moment; the service deletes the
-          // previous one after a successful update.
-          const ext = extname(file.originalname).toLowerCase() || '.jpg';
-          cb(null, `avatar-${req.user?.sub ?? 'unknown'}-${Date.now()}${ext}`);
-        },
-      }),
+      storage: memoryStorage(),
       limits: {
         fileSize: 5 * 1024 * 1024, // 5 MB
       },

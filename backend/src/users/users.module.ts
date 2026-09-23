@@ -4,9 +4,10 @@ import { UsersService } from './users.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, CloudinaryModule],
   controllers: [UsersController],
   providers: [UsersService, JwtAuthGuard, RolesGuard],
   exports: [UsersService],

@@ -4,12 +4,13 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserRole } from '../common/enums/user-role.enum';
 import * as bcrypt from 'bcrypt';
-import { existsSync, unlinkSync } from 'fs';
-import { join, resolve } from 'path';
-
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cloudinaryService: CloudinaryService,
+  ) {}
 
   // ========== CREATE USER ==========
   async createUser(dto: CreateUserDto, role: UserRole = UserRole.USER) {
@@ -117,9 +118,7 @@ export class UsersService {
   }
 
   // ========== UPDATE AVATAR ==========
-  // Stores the uploaded profile picture under /uploads/avatars (saved to disk
-  // by multer in the controller) and points the user's avatarUrl at it. The
-  // previous file is removed so the uploads folder does not grow forever.
+  // Uploads the image buffer to Cloudinary and saves the resulting URL
   async updateAvatar(userId: number, file?: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException('No image uploaded');
@@ -130,19 +129,12 @@ export class UsersService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    const avatarUrl = `/uploads/avatars/${file.filename}`;
-
-    // Best-effort cleanup of the old avatar file.
-    if (user.avatarUrl?.startsWith('/uploads/')) {
-      try {
-        const uploadsRoot = resolve(process.cwd(), 'uploads');
-        const oldPath = resolve(process.cwd(), '.' + user.avatarUrl);
-        if (oldPath.startsWith(uploadsRoot) && existsSync(oldPath)) {
-          unlinkSync(oldPath);
-        }
-      } catch {
-        // A stale file on disk must never block the update.
-      }
+    let avatarUrl = '';
+    try {
+      const result = await this.cloudinaryService.uploadImage(file);
+      avatarUrl = result.secure_url;
+    } catch (error) {
+      throw new BadRequestException('Failed to upload image to Cloudinary');
     }
 
     const updated = await this.prisma.user.update({
