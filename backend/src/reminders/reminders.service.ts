@@ -1,5 +1,4 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 import { toLocalDateStr } from '../common/utils/timezone.util';
@@ -56,7 +55,7 @@ export class RemindersService implements OnModuleInit {
    */
   async onModuleInit() {
     setTimeout(() => {
-      this.handleGoalReminders().catch((err: any) => {
+      this.triggerReminders().catch((err: any) => {
         this.logger.error(
           `Startup reminder pass failed: ${err?.message || err}`,
         );
@@ -65,24 +64,26 @@ export class RemindersService implements OnModuleInit {
   }
 
   /**
-   * Runs every minute and sends at most one reminder (Web Push notification)
-   * per user per hour. The reminder mentions exactly one pending goal and
-   * rotates through the user's pending goals so each one gets a turn. Goals
-   * are only considered if created today (in the user's own timezone) and not
-   * already reminded within the last hour. As soon as every today goal is
-   * completed, reminders stop.
+   * Called by the external trigger endpoint to send at most one reminder
+   * (Web Push notification) per user per hour.
    */
-  @Cron(CronExpression.EVERY_MINUTE, { name: 'goal-reminders' })
-  async handleGoalReminders() {
-    if (!this.pushService.isEnabled()) return;
+  async triggerReminders() {
+    this.logger.log('External trigger received: Starting reminder processing...');
+    if (!this.pushService.isEnabled()) {
+      this.logger.warn('Push service is disabled. Aborting reminders.');
+      return { success: false, reason: 'Push service disabled' };
+    }
 
     try {
-      await this.processDueReminders();
+      const stats = await this.processDueReminders();
+      this.logger.log(`Finished reminder processing. Sent: ${stats.sent}, Skipped: ${stats.skipped}`);
+      return { success: true, stats };
     } catch (err: any) {
       this.logger.error(
-        `Reminder cron failed: ${err?.message || err}`,
+        `Reminder processing failed: ${err?.message || err}`,
         err?.stack,
       );
+      return { success: false, error: err?.message || err };
     }
   }
 
@@ -106,6 +107,8 @@ export class RemindersService implements OnModuleInit {
       },
     });
 
+    this.logger.log(`Found ${goals.length} total pending goals across all users.`);
+
     // Keep only today's (in the user's timezone) unfinished goals.
     const goalsByUser = new Map<number, DueGoal[]>();
     for (const goal of goals) {
@@ -125,6 +128,11 @@ export class RemindersService implements OnModuleInit {
       list.push(goal);
       goalsByUser.set(userId, list);
     }
+    
+    this.logger.log(`Found ${goalsByUser.size} users with due goals today.`);
+
+    let sentCount = 0;
+    let skippedCount = 0;
 
     for (const [userId, userGoals] of goalsByUser) {
       // Maximum one pending-goal notification per user per hour.
@@ -136,6 +144,8 @@ export class RemindersService implements OnModuleInit {
         0,
       );
       if (latestReminder && now.getTime() - latestReminder < ONE_HOUR_MS) {
+        this.logger.debug(`Skipping user ${userId}: already reminded within the last hour.`);
+        skippedCount++;
         continue;
       }
 
@@ -161,25 +171,32 @@ export class RemindersService implements OnModuleInit {
         .replaceAll('{username}', firstName)
         .replaceAll('{goal}', selected.title);
 
-      await this.pushService.sendNotification(userId, {
-        title: `Today's Goal Reminder`,
-        body,
-        url: '/goals',
-        tag: `goal-reminder-${selected.id}`,
-      });
+      this.logger.log(`Attempting to send notification to user ${userId} for goal #${selected.id}`);
+      
+      try {
+        await this.pushService.sendNotification(userId, {
+          title: `Today's Goal Reminder`,
+          body,
+          url: '/goals',
+          tag: `goal-reminder-${selected.id}`,
+        });
+        
+        sentCount++;
+        this.logger.log(`Successfully sent notification to user ${userId}`);
 
-      // Record the reminder time only on the selected goal so the next hour's
-      // notification rotates to a different pending goal.
-      await this.prisma.goal
-        .updateMany({
+        // Record the reminder time only on the selected goal so the next hour's
+        // notification rotates to a different pending goal.
+        await this.prisma.goal.updateMany({
           where: { id: selected.id },
           data: { reminderSent: true, reminderSentAt: new Date() },
-        })
-        .catch((err: any) => {
-          this.logger.error(
-            `Failed to mark goal #${selected.id} as reminded: ${err?.message || err}`,
-          );
         });
+      } catch (err: any) {
+        this.logger.error(
+          `Failed to process notification for user ${userId}, goal #${selected.id}: ${err?.message || err}`,
+        );
+      }
     }
+    
+    return { sent: sentCount, skipped: skippedCount };
   }
 }
